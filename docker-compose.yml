@@ -1,0 +1,62 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      BASE_URL: ${BASE_URL:-http://localhost:8080}
+      APP_PASSWORD: ${APP_PASSWORD:-changeme}
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
+      DATABASE_URL: sqlite:///./data/db.sqlite
+      REDIS_URL: redis://redis:6379/0
+      DATA_DIR: ./data
+      AUDIO_DIR: ./data/audio
+      ARTWORK_DIR: ./data/artwork
+    volumes:
+      - backend_data:/app/data
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=2
+    environment:
+      BASE_URL: ${BASE_URL:-http://localhost:8080}
+      APP_PASSWORD: ${APP_PASSWORD:-changeme}
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
+      DATABASE_URL: sqlite:///./data/db.sqlite
+      REDIS_URL: redis://redis:6379/0
+      DATA_DIR: ./data
+      AUDIO_DIR: ./data/audio
+      ARTWORK_DIR: ./data/artwork
+    volumes:
+      - backend_data:/app/data
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      # Public port - RSS/audio/artwork only (expose to internet)
+      - "8080:80"
+      # Admin port - full UI and API (local network only - do NOT forward this port on your router)
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  backend_data:
+  redis_data:

@@ -1,0 +1,116 @@
+const API_BASE = '/api';
+
+function getToken() {
+  return localStorage.getItem('token');
+}
+
+function setToken(token) {
+  localStorage.setItem('token', token);
+}
+
+function clearToken() {
+  localStorage.removeItem('token');
+}
+
+async function request(path, options = {}) {
+  const token = getToken();
+  const headers = {
+    ...options.headers,
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  // Don't set Content-Type for FormData
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers,
+  });
+
+  if (response.status === 401) {
+    clearToken();
+    window.location.href = '/login';
+    throw new Error('Unauthorized');
+  }
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Request failed' }));
+    throw new Error(error.detail || 'Request failed');
+  }
+
+  return response.json();
+}
+
+export const api = {
+  // Auth
+  login: async (password) => {
+    const data = await request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    });
+    setToken(data.access_token);
+    return data;
+  },
+
+  logout: () => {
+    clearToken();
+  },
+
+  verify: () => request('/auth/verify'),
+
+  isAuthenticated: () => !!getToken(),
+
+  // Feeds
+  getFeeds: () => request('/feeds'),
+
+  getFeed: (id) => request(`/feeds/${id}`),
+
+  createFeed: async (name, author, description, artwork) => {
+    const formData = new FormData();
+    formData.append('name', name);
+    if (author) formData.append('author', author);
+    if (description) formData.append('description', description);
+    if (artwork) formData.append('artwork', artwork);
+
+    return request('/feeds', {
+      method: 'POST',
+      body: formData,
+    });
+  },
+
+  updateFeed: async (id, name, author, description, artwork) => {
+    const formData = new FormData();
+    if (name) formData.append('name', name);
+    if (author !== undefined) formData.append('author', author || '');
+    if (description !== undefined) formData.append('description', description || '');
+    if (artwork) formData.append('artwork', artwork);
+
+    return request(`/feeds/${id}`, {
+      method: 'PUT',
+      body: formData,
+    });
+  },
+
+  deleteFeed: (id) => request(`/feeds/${id}`, { method: 'DELETE' }),
+
+  addVideos: (feedId, urls) => request(`/feeds/${feedId}/add-videos`, {
+    method: 'POST',
+    body: JSON.stringify({ urls }),
+  }),
+
+  deleteEpisode: (feedId, episodeId) => request(`/feeds/${feedId}/episodes/${episodeId}`, {
+    method: 'DELETE',
+  }),
+
+  retryEpisode: (feedId, episodeId) => request(`/feeds/${feedId}/episodes/${episodeId}/retry`, {
+    method: 'POST',
+  }),
+
+  // Storage
+  getStorage: () => request('/feeds/storage/info'),
+};

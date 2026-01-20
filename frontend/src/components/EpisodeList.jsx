@@ -1,0 +1,135 @@
+import { useState } from 'react';
+import { api } from '../api';
+
+const statusColors = {
+  pending: 'bg-yellow-100 text-yellow-800',
+  downloading: 'bg-blue-100 text-blue-800',
+  ready: 'bg-green-100 text-green-800',
+  failed: 'bg-red-100 text-red-800',
+};
+
+function formatBytes(bytes) {
+  if (!bytes) return null;
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let unitIndex = 0;
+  let size = bytes;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex++;
+  }
+  return `${size.toFixed(1)} ${units[unitIndex]}`;
+}
+
+export default function EpisodeList({ feedId, episodes, onUpdate }) {
+  const [deleting, setDeleting] = useState(null);
+  const [retrying, setRetrying] = useState(null);
+
+  const handleDelete = async (episodeId) => {
+    if (!confirm('Are you sure you want to delete this episode?')) return;
+
+    setDeleting(episodeId);
+    try {
+      await api.deleteEpisode(feedId, episodeId);
+      onUpdate();
+    } catch (err) {
+      alert(err.message || 'Failed to delete episode');
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const handleRetry = async (episodeId) => {
+    setRetrying(episodeId);
+    try {
+      await api.retryEpisode(feedId, episodeId);
+      onUpdate();
+    } catch (err) {
+      alert(err.message || 'Failed to retry episode');
+    } finally {
+      setRetrying(null);
+    }
+  };
+
+  if (episodes.length === 0) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        No episodes yet. Add some videos to get started.
+      </div>
+    );
+  }
+
+  return (
+    <div className="divide-y divide-gray-200">
+      {episodes.map((episode) => (
+        <div key={episode.id} className="py-4 flex items-start gap-4">
+          {episode.thumbnail_url && (
+            <img
+              src={episode.thumbnail_url}
+              alt=""
+              className="w-32 h-20 object-cover rounded flex-shrink-0"
+            />
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <h4 className="text-sm font-medium text-gray-900 truncate">
+                {episode.title}
+              </h4>
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[episode.status]}`}>
+                {episode.status}
+              </span>
+            </div>
+            {episode.description && (
+              <p className="mt-1 text-sm text-gray-500 line-clamp-2">
+                {episode.description}
+              </p>
+            )}
+            <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
+              {episode.duration && (
+                <span>
+                  {Math.floor(episode.duration / 60)}:{String(episode.duration % 60).padStart(2, '0')}
+                </span>
+              )}
+              {episode.file_size && (
+                <span>{formatBytes(episode.file_size)}</span>
+              )}
+              {episode.published_at && (
+                <span>{new Date(episode.published_at).toLocaleDateString()}</span>
+              )}
+              <a
+                href={`https://www.youtube.com/watch?v=${episode.youtube_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-indigo-600 hover:text-indigo-500"
+              >
+                YouTube
+              </a>
+            </div>
+            {episode.error_message && (
+              <p className="mt-2 text-sm text-red-600">
+                Error: {episode.error_message}
+              </p>
+            )}
+            <div className="mt-2 flex gap-2">
+              {episode.status === 'failed' && (
+                <button
+                  onClick={() => handleRetry(episode.id)}
+                  disabled={retrying === episode.id}
+                  className="text-xs text-indigo-600 hover:text-indigo-500 disabled:opacity-50"
+                >
+                  {retrying === episode.id ? 'Retrying...' : 'Retry'}
+                </button>
+              )}
+              <button
+                onClick={() => handleDelete(episode.id)}
+                disabled={deleting === episode.id}
+                className="text-xs text-red-600 hover:text-red-500 disabled:opacity-50"
+              >
+                {deleting === episode.id ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
