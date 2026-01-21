@@ -1,7 +1,7 @@
 import os
 import shutil
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
@@ -503,8 +503,9 @@ async def update_episode(
         episode.published_at = episode.original_published_at or episode.created_at
     else:
         # Validate date range: reject dates before 2005 (YouTube launch) or more than 1 year in future
-        min_date = datetime(2005, 1, 1)
-        max_date = datetime.utcnow().replace(year=datetime.utcnow().year + 1)
+        min_date = datetime(2005, 1, 1, tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+        max_date = now.replace(year=now.year + 1)
         if request.published_at < min_date:
             raise HTTPException(status_code=400, detail="Date cannot be before 2005")
         if request.published_at > max_date:
