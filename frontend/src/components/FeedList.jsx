@@ -1,5 +1,14 @@
 import { Link } from 'react-router-dom';
 
+function formatDate(dateString) {
+  if (!dateString) return null;
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export default function FeedList({ feeds }) {
   if (feeds.length === 0) {
     return (
@@ -39,7 +48,7 @@ export default function FeedList({ feeds }) {
           <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
             <span>{feed.episode_count} episode{feed.episode_count !== 1 ? 's' : ''}</span>
             <span>
-              {new Date(feed.created_at).toLocaleDateString()}
+              {formatDate(feed.created_at)}
             </span>
           </div>
         </Link>

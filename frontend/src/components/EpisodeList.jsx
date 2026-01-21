@@ -20,6 +20,15 @@ function formatBytes(bytes) {
   return `${size.toFixed(1)} ${units[unitIndex]}`;
 }
 
+function formatDate(dateString) {
+  if (!dateString) return null;
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export default function EpisodeList({ feedId, episodes, onUpdate }) {
   const [deleting, setDeleting] = useState(null);
   const [retrying, setRetrying] = useState(null);
@@ -66,9 +75,17 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
     return episode.thumbnail_url;
   };
 
+  // Sort episodes by published_at (newest first), with null dates at the end
+  const sortedEpisodes = [...episodes].sort((a, b) => {
+    if (!a.published_at && !b.published_at) return 0;
+    if (!a.published_at) return 1;
+    if (!b.published_at) return -1;
+    return new Date(b.published_at) - new Date(a.published_at);
+  });
+
   return (
     <div className="divide-y divide-gray-200">
-      {episodes.map((episode) => {
+      {sortedEpisodes.map((episode) => {
         const thumbnailUrl = getThumbnailUrl(episode);
         const isUploaded = episode.source_type === 'upload';
 
@@ -105,7 +122,7 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
                 <span>{formatBytes(episode.file_size)}</span>
               )}
               {episode.published_at && (
-                <span>{new Date(episode.published_at).toLocaleDateString()}</span>
+                <span>{formatDate(episode.published_at)}</span>
               )}
               {isUploaded ? (
                 <span className="text-purple-600 font-medium">Uploaded</span>
