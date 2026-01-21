@@ -5,12 +5,13 @@ A self-hosted web application that creates podcast RSS feeds from YouTube videos
 ## Features
 
 - **Create podcast feeds** from YouTube videos and playlists
+- **Upload custom audio** - add your own MP3, M4A, WAV, FLAC, or OGG files
 - **Automatic audio extraction** - downloads and converts to MP3
 - **Custom metadata** - set feed name, author, description, and artwork
 - **Valid podcast RSS** - compatible with all major podcast apps
 - **Background processing** - videos download asynchronously via Celery workers
 - **Storage monitoring** - track disk usage per feed
-- **Secure by design** - admin interface separated from public endpoints
+- **Secure by design** - admin interface separated from public endpoints, rate limiting, SSRF protection
 
 ## Architecture
 
@@ -28,19 +29,25 @@ A self-hosted web application that creates podcast RSS feeds from YouTube videos
    git clone <repo-url> yt-to-rss
    cd yt-to-rss
    cp .env.example .env
-   # Edit .env to set your password and public URL
    ```
 
-2. **Start the stack**
+2. **Set required secrets in `.env`**
+   ```bash
+   APP_PASSWORD=your-secure-password-here
+   SECRET_KEY=$(openssl rand -hex 32)
+   ```
+   > **Important:** The app will refuse to start with default/empty secrets.
+
+3. **Start the stack**
    ```bash
    docker-compose up -d --build
    ```
 
-3. **Access the admin interface**
+4. **Access the admin interface**
    - Open `http://localhost:3000` (or `http://<server-ip>:3000` from LAN)
-   - Login with your configured password (default: `changeme`)
+   - Login with your configured password
 
-4. **Create a feed and add videos**
+5. **Create a feed and add videos**
    - Click "New Feed" and fill in the details
    - Add YouTube video or playlist URLs
    - Copy the RSS URL and add it to your podcast app
@@ -51,9 +58,12 @@ Edit `.env` or set environment variables:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `APP_PASSWORD` | Admin interface password | **Required** |
+| `SECRET_KEY` | JWT signing key (32+ chars recommended) | **Required** |
 | `BASE_URL` | Public URL for RSS feed links | `http://localhost:8080` |
-| `APP_PASSWORD` | Admin interface password | `changeme` |
-| `SECRET_KEY` | JWT signing key | (change in production!) |
+| `ADMIN_ORIGIN` | Admin UI origin for CORS | `http://localhost:3000` |
+
+> **Security Note:** `APP_PASSWORD` and `SECRET_KEY` have no defaults. The app will fail to start if they are not set or if they match the old default values (`changeme` / `your-secret-key-change-in-production`).
 
 ## Port Configuration
 
@@ -83,6 +93,14 @@ Edit `.env` or set environment variables:
    - Short URLs: `https://youtu.be/...`
 4. Videos will download in the background
 
+### Uploading Audio Files
+
+1. Open a feed from the home page
+2. Click "Upload Audio"
+3. Select an audio file (MP3, M4A, WAV, FLAC, or OGG up to 500MB)
+4. Optionally add a custom title, description, and thumbnail
+5. Files are converted to MP3 automatically (large files process in background)
+
 ### Subscribing to Feeds
 
 1. Open a feed and copy the RSS URL
@@ -99,9 +117,20 @@ Monitor disk usage at `http://localhost:3000/storage`:
 - Per-feed storage breakdown
 - Episode counts
 
+## Security
+
+- **Required secrets** - App refuses to start with default/empty passwords
+- **JWT authentication** - Tokens include issuer/audience claims, 24-hour expiry
+- **Rate limiting** - Login endpoint limited to 5 attempts per minute
+- **CORS protection** - Only configured admin origin can access API
+- **SSRF prevention** - Thumbnail proxy only allows YouTube domains
+- **Path traversal prevention** - File serving validates paths stay within allowed directories
+- **File validation** - Uploaded audio/artwork verified using ffprobe and PIL
+- **Security headers** - X-Content-Type-Options, X-Frame-Options, X-XSS-Protection
+
 ## Tech Stack
 
-- **Backend:** Python 3.12, FastAPI, SQLAlchemy, Celery, yt-dlp, feedgen
+- **Backend:** Python 3.12, FastAPI, SQLAlchemy, Celery, yt-dlp, feedgen, slowapi
 - **Frontend:** React 18, Vite, TailwindCSS, React Router
 - **Infrastructure:** Docker, docker-compose, Redis, nginx
 
