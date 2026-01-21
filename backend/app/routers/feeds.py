@@ -234,10 +234,13 @@ async def add_videos(
         db.flush()
         new_episodes.append(episode)
 
-        # Queue download task
-        download_episode.delay(episode.id)
-
+    # Commit transaction BEFORE queuing tasks to avoid race condition
+    # where worker queries for episode before it's visible
     db.commit()
+
+    # Queue download tasks after commit
+    for episode in new_episodes:
+        download_episode.delay(episode.id)
 
     return AddVideosResponse(
         added_count=len(new_episodes),
