@@ -39,6 +39,8 @@ def run_migrations():
         ("episodes", "original_filename", "ALTER TABLE episodes ADD COLUMN original_filename VARCHAR(500)"),
         # Add thumbnail_path column for local episode thumbnails
         ("episodes", "thumbnail_path", "ALTER TABLE episodes ADD COLUMN thumbnail_path VARCHAR(500)"),
+        # Add original_published_at column for date override support
+        ("episodes", "original_published_at", "ALTER TABLE episodes ADD COLUMN original_published_at DATETIME"),
     ]
 
     with engine.connect() as conn:
@@ -51,6 +53,22 @@ def run_migrations():
                 logger.info(f"Adding column {column} to {table}")
                 conn.execute(text(sql))
                 conn.commit()
+
+        # Data migration: populate original_published_at for existing episodes
+        result = conn.execute(text(
+            "SELECT id, published_at, created_at FROM episodes WHERE original_published_at IS NULL"
+        ))
+        rows = result.fetchall()
+        if rows:
+            logger.info(f"Migrating original_published_at for {len(rows)} existing episodes")
+            for row in rows:
+                original_date = row[1] if row[1] else row[2]  # published_at or created_at
+                if original_date:
+                    conn.execute(
+                        text("UPDATE episodes SET original_published_at = :date WHERE id = :id"),
+                        {"date": original_date, "id": row[0]}
+                    )
+            conn.commit()
 
 
 def init_db():

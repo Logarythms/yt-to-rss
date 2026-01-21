@@ -32,6 +32,35 @@ function formatDate(dateString) {
 export default function EpisodeList({ feedId, episodes, onUpdate }) {
   const [deleting, setDeleting] = useState(null);
   const [retrying, setRetrying] = useState(null);
+  const [editingDateId, setEditingDateId] = useState(null);
+  const [editingDateValue, setEditingDateValue] = useState('');
+  const [savingDate, setSavingDate] = useState(null);
+
+  const handleDateClick = (episode) => {
+    setEditingDateId(episode.id);
+    setEditingDateValue(episode.published_at
+      ? new Date(episode.published_at).toISOString().split('T')[0] : '');
+  };
+
+  const handleDateSave = async (episode) => {
+    setSavingDate(episode.id);
+    try {
+      const published_at = editingDateValue
+        ? new Date(editingDateValue + 'T00:00:00').toISOString() : null;
+      await api.updateEpisode(feedId, episode.id, { published_at });
+      setEditingDateId(null);
+      onUpdate();
+    } catch (err) {
+      alert(err.message || 'Failed to update date');
+    } finally {
+      setSavingDate(null);
+    }
+  };
+
+  const handleDateKeyDown = (e, episode) => {
+    if (e.key === 'Enter') { e.preventDefault(); handleDateSave(episode); }
+    else if (e.key === 'Escape') { setEditingDateId(null); }
+  };
 
   const handleDelete = async (episodeId) => {
     if (!confirm('Are you sure you want to delete this episode?')) return;
@@ -121,8 +150,25 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
               {episode.file_size && (
                 <span>{formatBytes(episode.file_size)}</span>
               )}
-              {episode.published_at && (
-                <span>{formatDate(episode.published_at)}</span>
+              {editingDateId === episode.id ? (
+                <input
+                  type="date"
+                  value={editingDateValue}
+                  onChange={(e) => setEditingDateValue(e.target.value)}
+                  onBlur={() => handleDateSave(episode)}
+                  onKeyDown={(e) => handleDateKeyDown(e, episode)}
+                  disabled={savingDate === episode.id}
+                  autoFocus
+                  className="text-xs border border-gray-300 rounded px-1 py-0.5 w-32"
+                />
+              ) : (
+                <span
+                  onClick={() => handleDateClick(episode)}
+                  className="cursor-pointer hover:text-indigo-600 hover:underline"
+                  title="Click to edit date"
+                >
+                  {episode.published_at ? formatDate(episode.published_at) : 'No date'}
+                </span>
               )}
               {isUploaded ? (
                 <span className="text-purple-600 font-medium">Uploaded</span>

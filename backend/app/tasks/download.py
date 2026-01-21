@@ -81,6 +81,7 @@ def download_episode(self, episode_id: str):
             episode.thumbnail_url = info.thumbnail_url
             episode.duration = info.duration
             episode.published_at = info.published_at
+            episode.original_published_at = info.published_at
             db.commit()
 
             # Cache thumbnail locally (SSRF protection - validates domain)

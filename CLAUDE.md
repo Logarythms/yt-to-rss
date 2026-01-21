@@ -89,7 +89,8 @@ The nginx config (`frontend/nginx.conf`) defines two server blocks to separate p
 - `audio_path` (string, nullable)
 - `file_size` (int, nullable) - bytes
 - `duration` (int, nullable) - seconds
-- `published_at` (datetime, nullable)
+- `published_at` (datetime, nullable) - can be overridden by user
+- `original_published_at` (datetime, nullable) - auto-detected date (YouTube or upload time)
 - `status` (enum: pending, downloading, ready, failed)
 - `error_message` (text, nullable)
 - `source_type` (enum: youtube, upload) - default 'youtube'

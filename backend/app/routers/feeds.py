@@ -11,7 +11,7 @@ from app.models import Feed, Episode, EpisodeStatus, EpisodeSource
 from sqlalchemy import func
 from app.schemas import (
     FeedCreate, FeedUpdate, FeedResponse, FeedListResponse,
-    FeedDetailResponse, EpisodeResponse, AddVideosRequest, AddVideosResponse,
+    FeedDetailResponse, EpisodeResponse, EpisodeUpdate, AddVideosRequest, AddVideosResponse,
     StorageResponse, FeedStorageInfo
 )
 from app.auth import get_current_user
@@ -360,6 +360,7 @@ async def upload_audio(
             shutil.move(temp_input_path, persistent_temp_path)
 
             # Create episode with pending status
+            now = datetime.utcnow()
             episode = Episode(
                 id=episode_id,
                 feed_id=feed_id,
@@ -370,7 +371,8 @@ async def upload_audio(
                 audio_path=None,  # Will be set by Celery task
                 file_size=None,  # Will be set by Celery task
                 duration=metadata.duration,
-                published_at=datetime.utcnow(),
+                published_at=now,
+                original_published_at=now,
                 status=EpisodeStatus.pending,
                 source_type=EpisodeSource.upload,
                 original_filename=safe_filename,
@@ -409,6 +411,7 @@ async def upload_audio(
         output_file_size = os.path.getsize(output_path)
 
         # Create episode
+        now = datetime.utcnow()
         episode = Episode(
             id=episode_id,
             feed_id=feed_id,
@@ -419,7 +422,8 @@ async def upload_audio(
             audio_path=output_path,
             file_size=output_file_size,
             duration=metadata.duration,
-            published_at=datetime.utcnow(),
+            published_at=now,
+            original_published_at=now,
             status=EpisodeStatus.ready,
             source_type=EpisodeSource.upload,
             original_filename=safe_filename,
@@ -473,6 +477,32 @@ async def delete_episode(
     db.commit()
 
     return {"deleted": True}
+
+
+@router.patch("/{feed_id}/episodes/{episode_id}", response_model=EpisodeResponse)
+async def update_episode(
+    feed_id: str,
+    episode_id: str,
+    request: EpisodeUpdate,
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    """Update episode metadata."""
+    episode = db.query(Episode).filter(
+        Episode.id == episode_id, Episode.feed_id == feed_id
+    ).first()
+    if not episode:
+        raise HTTPException(status_code=404, detail="Episode not found")
+
+    if request.published_at is None:
+        # Revert to original date
+        episode.published_at = episode.original_published_at or episode.created_at
+    else:
+        episode.published_at = request.published_at
+
+    db.commit()
+    db.refresh(episode)
+    return EpisodeResponse.model_validate(episode)
 
 
 @router.post("/{feed_id}/episodes/{episode_id}/retry")

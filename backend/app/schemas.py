@@ -56,6 +56,7 @@ class EpisodeResponse(BaseModel):
     file_size: Optional[int]  # bytes
     duration: Optional[int]
     published_at: Optional[datetime]
+    original_published_at: Optional[datetime]
     status: EpisodeStatus
     error_message: Optional[str]
     created_at: datetime
@@ -88,6 +89,10 @@ class AddVideosRequest(BaseModel):
 class AddVideosResponse(BaseModel):
     added_count: int
     episodes: list[EpisodeResponse]
+
+
+class EpisodeUpdate(BaseModel):
+    published_at: Optional[datetime] = None  # None = revert to original
 
 
 # Storage schemas

@@ -111,6 +111,11 @@ export const api = {
     method: 'POST',
   }),
 
+  updateEpisode: (feedId, episodeId, data) => request(`/feeds/${feedId}/episodes/${episodeId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }),
+
   uploadAudio: (feedId, audio, thumbnail, title, description, onProgress) => {
     return new Promise((resolve, reject) => {
       const formData = new FormData();

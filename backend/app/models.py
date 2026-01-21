@@ -49,6 +49,7 @@ class Episode(Base):
     file_size = Column(Integer, nullable=True)  # bytes
     duration = Column(Integer, nullable=True)  # seconds
     published_at = Column(DateTime, nullable=True)
+    original_published_at = Column(DateTime, nullable=True)
     status = Column(Enum(EpisodeStatus), default=EpisodeStatus.pending)
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
