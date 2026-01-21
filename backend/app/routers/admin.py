@@ -29,13 +29,13 @@ class MigrateImagesResponse(BaseModel):
     errors: list[str]
 
 
-def process_image_file(file_path: str, dry_run: bool) -> tuple[str, bool]:
+def process_image_file(file_path: str, dry_run: bool) -> str:
     """
     Process an image file to make it square with letterboxing.
-    Returns (status, success) where status is 'processed', 'skipped', or error message.
+    Returns status: 'processed', 'skipped', 'would_process', 'file_not_found', or error message.
     """
     if not file_path or not os.path.exists(file_path):
-        return "file_not_found", False
+        return "file_not_found"
 
     try:
         with open(file_path, 'rb') as f:
@@ -46,14 +46,14 @@ def process_image_file(file_path: str, dry_run: bool) -> tuple[str, bool]:
         # Check if already square
         width, height = img.size
         if width == height:
-            return "skipped", True
+            return "skipped"
 
         if dry_run:
-            return "would_process", True
+            return "would_process"
 
         # Convert to RGB if needed
         if img.mode in ('RGBA', 'P', 'LA'):
-            background = Image.new('RGB', img.size, (255, 255, 255))
+            background = Image.new('RGB', img.size, (0, 0, 0))
             if img.mode == 'P':
                 img = img.convert('RGBA')
             background.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
@@ -66,13 +66,13 @@ def process_image_file(file_path: str, dry_run: bool) -> tuple[str, bool]:
 
         # Save back to original path
         img.save(file_path, 'JPEG', quality=OUTPUT_QUALITY, optimize=True)
-        logger.info(f"Letterboxed image: {file_path} ({width}x{height} -> {img.size[0]}x{img.size[0]})")
+        logger.info(f"Letterboxed image: {file_path} ({width}x{height} -> {img.size[0]}x{img.size[1]})")
 
-        return "processed", True
+        return "processed"
 
     except Exception as e:
         logger.error(f"Failed to process image {file_path}: {e}")
-        return str(e), False
+        return str(e)
 
 
 @router.post("/migrate-images", response_model=MigrateImagesResponse)
@@ -95,7 +95,7 @@ async def migrate_images(
     feeds = db.query(Feed).filter(Feed.artwork_path.isnot(None)).all()
     for feed in feeds:
         total_images += 1
-        status, success = process_image_file(feed.artwork_path, request.dry_run)
+        status = process_image_file(feed.artwork_path, request.dry_run)
 
         if status == "skipped":
             skipped += 1
@@ -109,7 +109,7 @@ async def migrate_images(
     episodes = db.query(Episode).filter(Episode.thumbnail_path.isnot(None)).all()
     for episode in episodes:
         total_images += 1
-        status, success = process_image_file(episode.thumbnail_path, request.dry_run)
+        status = process_image_file(episode.thumbnail_path, request.dry_run)
 
         if status == "skipped":
             skipped += 1

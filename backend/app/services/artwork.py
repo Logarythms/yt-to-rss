@@ -67,8 +67,8 @@ def validate_and_process_artwork(
 
         # Convert to RGB (required for JPEG)
         if img.mode in ('RGBA', 'P', 'LA'):
-            # Create white background for transparent images
-            background = Image.new('RGB', img.size, (255, 255, 255))
+            # Create black background for transparent images (consistent with letterboxing)
+            background = Image.new('RGB', img.size, (0, 0, 0))
             if img.mode == 'P':
                 img = img.convert('RGBA')
             background.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)

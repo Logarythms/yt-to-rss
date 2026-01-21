@@ -178,6 +178,9 @@ export default function Storage() {
               Make all feed artwork and episode thumbnails square (1:1 aspect ratio) by adding black letterboxing.
               This improves compatibility with podcast apps.
             </p>
+            <p className="text-sm text-amber-600 mb-3">
+              Warning: This permanently modifies image files. Original images cannot be restored.
+            </p>
 
             <div className="flex gap-2">
               <button
