@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { api } from '../api';
 
 const statusColors = {
@@ -43,6 +43,14 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
+  const editPanelRef = useRef(null);
+
+  // Scroll edit panel into view when opened
+  useEffect(() => {
+    if (expandedEditId && editPanelRef.current) {
+      editPanelRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [expandedEditId]);
 
   const handleDateClick = (episode) => {
     cancelledRef.current = false;
@@ -282,7 +290,7 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
 
             {/* Expandable Edit Panel */}
             {expandedEditId === episode.id && (
-              <div className="mt-4 p-4 bg-gray-50 rounded border">
+              <div ref={editPanelRef} className="mt-4 p-4 bg-gray-50 rounded border">
                 <div className="mb-3">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Title
