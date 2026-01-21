@@ -1,6 +1,8 @@
 import os
 import logging
 from io import BytesIO
+from urllib.parse import urlparse
+import httpx
 from PIL import Image
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -8,13 +10,19 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Feed, Episode
 from app.auth import get_current_user
+from app.config import get_settings
 from app.services.image_utils import letterbox_to_square
+from app.services.thumbnail import process_thumbnail
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 OUTPUT_QUALITY = 90
+
+# Allowed domains for thumbnail downloads (SSRF prevention)
+ALLOWED_THUMBNAIL_DOMAINS = {'i.ytimg.com', 'i9.ytimg.com', 'img.youtube.com'}
 
 
 class MigrateImagesRequest(BaseModel):
@@ -22,11 +30,54 @@ class MigrateImagesRequest(BaseModel):
 
 
 class MigrateImagesResponse(BaseModel):
+    thumbnails_downloaded: int
+    thumbnails_failed: int
     total_images: int
     processed: int
     skipped: int
     failed: int
     errors: list[str]
+
+
+def download_thumbnail(episode_id: str, thumbnail_url: str, dry_run: bool) -> tuple[str | None, str]:
+    """
+    Download thumbnail from YouTube and cache locally.
+    Returns (local_path, status) where status is 'downloaded', 'would_download', or error message.
+    """
+    if not thumbnail_url:
+        return None, "no_url"
+
+    # Validate URL domain (SSRF prevention)
+    try:
+        parsed = urlparse(thumbnail_url)
+        if parsed.hostname not in ALLOWED_THUMBNAIL_DOMAINS or parsed.scheme != 'https':
+            logger.warning(f"Blocked thumbnail download from untrusted domain: {thumbnail_url}")
+            return None, "untrusted_domain"
+    except Exception:
+        return None, "invalid_url"
+
+    if dry_run:
+        return None, "would_download"
+
+    try:
+        os.makedirs(settings.thumbnail_dir, exist_ok=True)
+        output_path = os.path.join(settings.thumbnail_dir, f"{episode_id}.jpg")
+
+        # Download thumbnail
+        with httpx.Client(timeout=30.0) as client:
+            response = client.get(thumbnail_url)
+            response.raise_for_status()
+
+        # Process and save thumbnail (includes letterboxing)
+        if process_thumbnail(response.content, output_path):
+            logger.info(f"Downloaded and cached thumbnail for episode {episode_id}")
+            return output_path, "downloaded"
+        else:
+            return None, "processing_failed"
+
+    except Exception as e:
+        logger.error(f"Failed to download thumbnail for episode {episode_id}: {e}")
+        return None, str(e)
 
 
 def process_image_file(file_path: str, dry_run: bool) -> str:
@@ -82,16 +133,37 @@ async def migrate_images(
     _: str = Depends(get_current_user)
 ):
     """
-    Process all existing images to make them square with black letterboxing.
+    Download missing thumbnails and make all images square with black letterboxing.
     Use dry_run=true to preview changes without modifying files.
     """
+    thumbnails_downloaded = 0
+    thumbnails_failed = 0
     total_images = 0
     processed = 0
     skipped = 0
     failed = 0
     errors = []
 
-    # Process feed artwork
+    # Step 1: Download thumbnails for episodes that have thumbnail_url but no thumbnail_path
+    episodes_missing_thumbnails = db.query(Episode).filter(
+        Episode.thumbnail_url.isnot(None),
+        Episode.thumbnail_path.is_(None)
+    ).all()
+
+    for episode in episodes_missing_thumbnails:
+        path, status = download_thumbnail(str(episode.id), episode.thumbnail_url, request.dry_run)
+
+        if status == "downloaded":
+            episode.thumbnail_path = path
+            db.commit()
+            thumbnails_downloaded += 1
+        elif status == "would_download":
+            thumbnails_downloaded += 1
+        elif status != "no_url":
+            thumbnails_failed += 1
+            errors.append(f"Episode '{episode.title}' thumbnail download: {status}")
+
+    # Step 2: Process feed artwork
     feeds = db.query(Feed).filter(Feed.artwork_path.isnot(None)).all()
     for feed in feeds:
         total_images += 1
@@ -105,7 +177,7 @@ async def migrate_images(
             failed += 1
             errors.append(f"Feed '{feed.name}' artwork: {status}")
 
-    # Process episode thumbnails
+    # Step 3: Process episode thumbnails (now includes newly downloaded ones)
     episodes = db.query(Episode).filter(Episode.thumbnail_path.isnot(None)).all()
     for episode in episodes:
         total_images += 1
@@ -120,6 +192,8 @@ async def migrate_images(
             errors.append(f"Episode '{episode.title}' thumbnail: {status}")
 
     return MigrateImagesResponse(
+        thumbnails_downloaded=thumbnails_downloaded,
+        thumbnails_failed=thumbnails_failed,
         total_images=total_images,
         processed=processed,
         skipped=skipped,

@@ -175,8 +175,8 @@ export default function Storage() {
         <div className="space-y-4">
           <div>
             <p className="text-sm text-gray-600 mb-3">
-              Make all feed artwork and episode thumbnails square (1:1 aspect ratio) by adding black letterboxing.
-              This improves compatibility with podcast apps.
+              Download missing episode thumbnails from YouTube, then make all feed artwork and thumbnails
+              square (1:1 aspect ratio) by adding black letterboxing. This improves compatibility with podcast apps.
             </p>
             <p className="text-sm text-amber-600 mb-3">
               Warning: This permanently modifies image files. Original images cannot be restored.
@@ -229,6 +229,20 @@ export default function Storage() {
                   <p className="font-medium text-gray-900 mb-2">
                     {migrationResult.dryRun ? 'Preview Results' : 'Migration Complete'}
                   </p>
+                  {(migrationResult.thumbnails_downloaded > 0 || migrationResult.thumbnails_failed > 0) && (
+                    <div className="mb-3 pb-3 border-b border-gray-200">
+                      <p className="font-medium text-gray-700 mb-1">Thumbnail Downloads</p>
+                      <ul className="space-y-1 text-gray-600">
+                        <li className="text-blue-600">
+                          {migrationResult.dryRun ? 'Would download' : 'Downloaded'}: {migrationResult.thumbnails_downloaded}
+                        </li>
+                        {migrationResult.thumbnails_failed > 0 && (
+                          <li className="text-red-600">Failed: {migrationResult.thumbnails_failed}</li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                  <p className="font-medium text-gray-700 mb-1">Letterboxing</p>
                   <ul className="space-y-1 text-gray-600">
                     <li>Total images: {migrationResult.total_images}</li>
                     <li className="text-green-600">
