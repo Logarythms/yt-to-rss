@@ -8,6 +8,7 @@ A self-hosted web application that creates podcast RSS feeds from YouTube videos
 - **Upload custom audio** - add your own MP3, M4A, WAV, FLAC, or OGG files
 - **Automatic audio extraction** - downloads and converts to MP3
 - **Custom metadata** - set feed name, author, description, and artwork
+- **Editable episodes** - customize episode title, description, and publish date
 - **Valid podcast RSS** - compatible with all major podcast apps
 - **Background processing** - videos download asynchronously via Celery workers
 - **Storage monitoring** - track disk usage per feed
@@ -100,6 +101,14 @@ Edit `.env` or set environment variables:
 3. Select an audio file (MP3, M4A, WAV, FLAC, or OGG up to 500MB)
 4. Optionally add a custom title, description, and thumbnail
 5. Files are converted to MP3 automatically (large files process in background)
+
+### Editing Episodes
+
+1. Open a feed from the home page
+2. Click "Edit" on any episode to expand the edit panel
+3. Modify the title and/or description
+4. Click "Save" to apply changes
+5. Use "Clear" to revert a field to its original value (from YouTube or upload)
 
 ### Subscribing to Feeds
 

@@ -57,6 +57,8 @@ class EpisodeResponse(BaseModel):
     duration: Optional[int]
     published_at: Optional[datetime]
     original_published_at: Optional[datetime]
+    original_title: Optional[str] = None
+    original_description: Optional[str] = None
     status: EpisodeStatus
     error_message: Optional[str]
     created_at: datetime
@@ -93,6 +95,8 @@ class AddVideosResponse(BaseModel):
 
 class EpisodeUpdate(BaseModel):
     published_at: Optional[datetime] = None  # None = revert to original
+    title: Optional[str] = None  # None = no change, empty string = revert to original
+    description: Optional[str] = None  # None = no change, empty string = revert to original
 
 
 # Storage schemas

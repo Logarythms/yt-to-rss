@@ -50,6 +50,8 @@ class Episode(Base):
     duration = Column(Integer, nullable=True)  # seconds
     published_at = Column(DateTime, nullable=True)
     original_published_at = Column(DateTime, nullable=True)
+    original_title = Column(String(500), nullable=True)
+    original_description = Column(Text, nullable=True)
     status = Column(Enum(EpisodeStatus), default=EpisodeStatus.pending)
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

@@ -61,7 +61,7 @@ The nginx config (`frontend/nginx.conf`) defines two server blocks to separate p
 | `components/Login.jsx` | Login form |
 | `components/FeedForm.jsx` | Create/edit feed form |
 | `components/FeedList.jsx` | Feed grid display |
-| `components/EpisodeList.jsx` | Episode list with actions |
+| `components/EpisodeList.jsx` | Episode list with actions (delete, retry, edit title/description) |
 | `components/AddVideosModal.jsx` | URL input modal |
 | `pages/Home.jsx` | Feed listing page |
 | `pages/CreateFeed.jsx` | New feed page |
@@ -91,6 +91,8 @@ The nginx config (`frontend/nginx.conf`) defines two server blocks to separate p
 - `duration` (int, nullable) - seconds
 - `published_at` (datetime, nullable) - can be overridden by user
 - `original_published_at` (datetime, nullable) - auto-detected date (YouTube or upload time)
+- `original_title` (string, nullable) - auto-detected title for revert functionality
+- `original_description` (text, nullable) - auto-detected description for revert functionality
 - `status` (enum: pending, downloading, ready, failed)
 - `error_message` (text, nullable)
 - `source_type` (enum: youtube, upload) - default 'youtube'

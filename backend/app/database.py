@@ -41,6 +41,9 @@ def run_migrations():
         ("episodes", "thumbnail_path", "ALTER TABLE episodes ADD COLUMN thumbnail_path VARCHAR(500)"),
         # Add original_published_at column for date override support
         ("episodes", "original_published_at", "ALTER TABLE episodes ADD COLUMN original_published_at DATETIME"),
+        # Add original_title and original_description for title/description editing
+        ("episodes", "original_title", "ALTER TABLE episodes ADD COLUMN original_title VARCHAR(500)"),
+        ("episodes", "original_description", "ALTER TABLE episodes ADD COLUMN original_description TEXT"),
     ]
 
     with engine.connect() as conn:
@@ -84,6 +87,33 @@ def run_migrations():
                             text("UPDATE episodes SET original_published_at = :date WHERE id = :id"),
                             {"date": original_date, "id": row[0]}
                         )
+                conn.commit()
+            # Mark migration as complete
+            conn.execute(
+                text("INSERT INTO _migrations (name) VALUES (:name)"),
+                {"name": migration_name}
+            )
+            conn.commit()
+            logger.info(f"Data migration '{migration_name}' completed")
+
+        # Data migration: populate original_title and original_description for existing episodes
+        migration_name = "populate_original_title_description"
+        result = conn.execute(
+            text("SELECT 1 FROM _migrations WHERE name = :name"),
+            {"name": migration_name}
+        )
+        if not result.fetchone():
+            result = conn.execute(text(
+                "SELECT id, title, description FROM episodes WHERE original_title IS NULL"
+            ))
+            rows = result.fetchall()
+            if rows:
+                logger.info(f"Migrating original_title/description for {len(rows)} existing episodes")
+                for row in rows:
+                    conn.execute(
+                        text("UPDATE episodes SET original_title = :title, original_description = :desc WHERE id = :id"),
+                        {"title": row[1], "desc": row[2], "id": row[0]}
+                    )
                 conn.commit()
             # Mark migration as complete
             conn.execute(

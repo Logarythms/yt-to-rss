@@ -76,8 +76,25 @@ def download_episode(self, episode_id: str):
         try:
             # Get video info (in case we need to update metadata)
             info = get_video_info(episode.youtube_id)
-            episode.title = info.title
-            episode.description = info.description
+
+            # Only update title if user hasn't customized it
+            user_customized_title = (
+                episode.original_title is not None and
+                episode.title != episode.original_title
+            )
+            if not user_customized_title:
+                episode.title = info.title
+            episode.original_title = info.title
+
+            # Only update description if user hasn't customized it
+            user_customized_description = (
+                episode.original_description is not None and
+                episode.description != episode.original_description
+            )
+            if not user_customized_description:
+                episode.description = info.description
+            episode.original_description = info.description
+
             episode.thumbnail_url = info.thumbnail_url
             episode.duration = info.duration
             # Only update published_at if user hasn't customized it

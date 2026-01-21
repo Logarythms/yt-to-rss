@@ -38,6 +38,12 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
   const saveInProgressRef = useRef(false);
   const cancelledRef = useRef(false);
 
+  // Edit panel state
+  const [expandedEditId, setExpandedEditId] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+
   const handleDateClick = (episode) => {
     cancelledRef.current = false;
     setEditingDateId(episode.id);
@@ -100,6 +106,36 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
       alert(err.message || 'Failed to retry episode');
     } finally {
       setRetrying(null);
+    }
+  };
+
+  const toggleEditPanel = (episode) => {
+    if (expandedEditId === episode.id) {
+      // Close panel
+      setExpandedEditId(null);
+    } else {
+      // Open panel with current values
+      setExpandedEditId(episode.id);
+      setEditTitle(episode.title || '');
+      setEditDescription(episode.description || '');
+    }
+  };
+
+  const handleSaveEdit = async (episode) => {
+    setSavingEdit(true);
+    try {
+      // Empty string means revert to original, non-empty means update
+      // null means no change (but we always send both fields when saving)
+      await api.updateEpisode(feedId, episode.id, {
+        title: editTitle || '',  // empty string -> revert to original
+        description: editDescription || '',  // empty string -> revert to original
+      });
+      setExpandedEditId(null);
+      onUpdate();
+    } catch (err) {
+      alert(err.message || 'Failed to update episode');
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -218,6 +254,12 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
                 </button>
               )}
               <button
+                onClick={() => toggleEditPanel(episode)}
+                className="text-xs text-indigo-600 hover:text-indigo-500"
+              >
+                {expandedEditId === episode.id ? 'Cancel Edit' : 'Edit'}
+              </button>
+              <button
                 onClick={() => handleDelete(episode.id)}
                 disabled={deleting === episode.id}
                 className="text-xs text-red-600 hover:text-red-500 disabled:opacity-50"
@@ -225,6 +267,81 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
                 {deleting === episode.id ? 'Deleting...' : 'Delete'}
               </button>
             </div>
+
+            {/* Expandable Edit Panel */}
+            {expandedEditId === episode.id && (
+              <div className="mt-4 p-4 bg-gray-50 rounded border">
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Title
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="flex-1 text-sm border border-gray-300 rounded px-2 py-1"
+                      placeholder="Episode title"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEditTitle('')}
+                      className="text-xs text-gray-500 hover:text-gray-700 px-2"
+                      title="Clear to revert to original"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  {episode.original_title && editTitle !== episode.original_title && (
+                    <p className="mt-1 text-xs text-gray-400">
+                      Original: {episode.original_title}
+                    </p>
+                  )}
+                </div>
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <div className="flex gap-2">
+                    <textarea
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      rows={4}
+                      className="flex-1 text-sm border border-gray-300 rounded px-2 py-1"
+                      placeholder="Episode description"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEditDescription('')}
+                      className="text-xs text-gray-500 hover:text-gray-700 px-2 self-start"
+                      title="Clear to revert to original"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  {episode.original_description && editDescription !== episode.original_description && (
+                    <p className="mt-1 text-xs text-gray-400 line-clamp-2">
+                      Original: {episode.original_description}
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleSaveEdit(episode)}
+                    disabled={savingEdit}
+                    className="px-3 py-1 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-500 disabled:opacity-50"
+                  >
+                    {savingEdit ? 'Saving...' : 'Save'}
+                  </button>
+                  <button
+                    onClick={() => setExpandedEditId(null)}
+                    className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         );

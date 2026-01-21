@@ -373,6 +373,8 @@ async def upload_audio(
                 duration=metadata.duration,
                 published_at=now,
                 original_published_at=now,
+                original_title=episode_title,
+                original_description=description,
                 status=EpisodeStatus.pending,
                 source_type=EpisodeSource.upload,
                 original_filename=safe_filename,
@@ -424,6 +426,8 @@ async def upload_audio(
             duration=metadata.duration,
             published_at=now,
             original_published_at=now,
+            original_title=episode_title,
+            original_description=description,
             status=EpisodeStatus.ready,
             source_type=EpisodeSource.upload,
             original_filename=safe_filename,
@@ -506,6 +510,14 @@ async def update_episode(
         if request.published_at > max_date:
             raise HTTPException(status_code=400, detail="Date cannot be more than 1 year in the future")
         episode.published_at = request.published_at
+
+    # Handle title update (None = no change, empty string = revert to original)
+    if request.title is not None:
+        episode.title = request.title if request.title else (episode.original_title or episode.title)
+
+    # Handle description update (None = no change, empty string = revert to original)
+    if request.description is not None:
+        episode.description = request.description if request.description else episode.original_description
 
     db.commit()
     db.refresh(episode)
