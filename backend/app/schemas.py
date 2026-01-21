@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.models import EpisodeStatus, EpisodeSource
 
 
@@ -94,9 +94,11 @@ class AddVideosResponse(BaseModel):
 
 
 class EpisodeUpdate(BaseModel):
+    # Note: published_at uses None for revert (legacy behavior)
+    # title/description use empty string for revert (allows partial updates via None = no change)
     published_at: Optional[datetime] = None  # None = revert to original
-    title: Optional[str] = None  # None = no change, empty string = revert to original
-    description: Optional[str] = None  # None = no change, empty string = revert to original
+    title: Optional[str] = Field(None, max_length=500)  # None = no change, "" = revert
+    description: Optional[str] = None  # None = no change, "" = revert
 
 
 # Storage schemas

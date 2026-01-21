@@ -139,6 +139,18 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
     }
   };
 
+  const handleEditKeyDown = (e, episode) => {
+    if (e.key === 'Escape') {
+      setExpandedEditId(null);
+    } else if (e.key === 'Enter' && !e.shiftKey) {
+      // Allow Shift+Enter for newlines in description
+      if (e.target.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        handleSaveEdit(episode);
+      }
+    }
+  };
+
   if (episodes.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
@@ -280,6 +292,7 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
                       type="text"
                       value={editTitle}
                       onChange={(e) => setEditTitle(e.target.value)}
+                      onKeyDown={(e) => handleEditKeyDown(e, episode)}
                       className="flex-1 text-sm border border-gray-300 rounded px-2 py-1"
                       placeholder="Episode title"
                     />
@@ -306,6 +319,7 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
                     <textarea
                       value={editDescription}
                       onChange={(e) => setEditDescription(e.target.value)}
+                      onKeyDown={(e) => handleEditKeyDown(e, episode)}
                       rows={4}
                       className="flex-1 text-sm border border-gray-300 rounded px-2 py-1"
                       placeholder="Episode description"

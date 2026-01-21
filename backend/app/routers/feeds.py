@@ -517,7 +517,7 @@ async def update_episode(
 
     # Handle description update (None = no change, empty string = revert to original)
     if request.description is not None:
-        episode.description = request.description if request.description else episode.original_description
+        episode.description = request.description if request.description else (episode.original_description or episode.description)
 
     db.commit()
     db.refresh(episode)
