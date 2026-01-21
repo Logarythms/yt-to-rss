@@ -80,7 +80,14 @@ def download_episode(self, episode_id: str):
             episode.description = info.description
             episode.thumbnail_url = info.thumbnail_url
             episode.duration = info.duration
-            episode.published_at = info.published_at
+            # Only update published_at if user hasn't customized it
+            # (i.e., if it matches original_published_at or original is NULL)
+            user_customized_date = (
+                episode.original_published_at is not None and
+                episode.published_at != episode.original_published_at
+            )
+            if not user_customized_date:
+                episode.published_at = info.published_at
             episode.original_published_at = info.published_at
             db.commit()
 

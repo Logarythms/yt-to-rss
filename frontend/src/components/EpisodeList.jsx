@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { api } from '../api';
 
 const statusColors = {
@@ -35,18 +35,27 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
   const [editingDateId, setEditingDateId] = useState(null);
   const [editingDateValue, setEditingDateValue] = useState('');
   const [savingDate, setSavingDate] = useState(null);
+  const saveInProgressRef = useRef(false);
+  const cancelledRef = useRef(false);
 
   const handleDateClick = (episode) => {
+    cancelledRef.current = false;
     setEditingDateId(episode.id);
     setEditingDateValue(episode.published_at
       ? new Date(episode.published_at).toISOString().split('T')[0] : '');
   };
 
   const handleDateSave = async (episode) => {
+    // Skip if already saving or if edit was cancelled
+    if (saveInProgressRef.current || cancelledRef.current) {
+      return;
+    }
+    saveInProgressRef.current = true;
     setSavingDate(episode.id);
     try {
+      // Use noon UTC to avoid timezone day-shift issues
       const published_at = editingDateValue
-        ? new Date(editingDateValue + 'T00:00:00').toISOString() : null;
+        ? editingDateValue + 'T12:00:00Z' : null;
       await api.updateEpisode(feedId, episode.id, { published_at });
       setEditingDateId(null);
       onUpdate();
@@ -54,12 +63,18 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
       alert(err.message || 'Failed to update date');
     } finally {
       setSavingDate(null);
+      saveInProgressRef.current = false;
     }
   };
 
   const handleDateKeyDown = (e, episode) => {
-    if (e.key === 'Enter') { e.preventDefault(); handleDateSave(episode); }
-    else if (e.key === 'Escape') { setEditingDateId(null); }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleDateSave(episode);
+    } else if (e.key === 'Escape') {
+      cancelledRef.current = true;
+      setEditingDateId(null);
+    }
   };
 
   const handleDelete = async (episodeId) => {
@@ -150,24 +165,28 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
               {episode.file_size && (
                 <span>{formatBytes(episode.file_size)}</span>
               )}
-              {editingDateId === episode.id ? (
+              {savingDate === episode.id ? (
+                <span className="text-xs text-gray-400">Saving...</span>
+              ) : editingDateId === episode.id ? (
                 <input
                   type="date"
                   value={editingDateValue}
                   onChange={(e) => setEditingDateValue(e.target.value)}
                   onBlur={() => handleDateSave(episode)}
                   onKeyDown={(e) => handleDateKeyDown(e, episode)}
-                  disabled={savingDate === episode.id}
                   autoFocus
                   className="text-xs border border-gray-300 rounded px-1 py-0.5 w-32"
                 />
               ) : (
                 <span
                   onClick={() => handleDateClick(episode)}
-                  className="cursor-pointer hover:text-indigo-600 hover:underline"
+                  className="cursor-pointer hover:text-indigo-600 group inline-flex items-center gap-1"
                   title="Click to edit date"
                 >
                   {episode.published_at ? formatDate(episode.published_at) : 'No date'}
+                  <svg className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
                 </span>
               )}
               {isUploaded ? (

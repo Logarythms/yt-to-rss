@@ -44,6 +44,16 @@ def run_migrations():
     ]
 
     with engine.connect() as conn:
+        # Create migrations tracking table if it doesn't exist
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS _migrations (
+                name VARCHAR(255) PRIMARY KEY,
+                applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        conn.commit()
+
+        # Run column migrations
         for table, column, sql in migrations:
             # Check if column exists
             result = conn.execute(text(f"PRAGMA table_info({table})"))
@@ -55,20 +65,33 @@ def run_migrations():
                 conn.commit()
 
         # Data migration: populate original_published_at for existing episodes
-        result = conn.execute(text(
-            "SELECT id, published_at, created_at FROM episodes WHERE original_published_at IS NULL"
-        ))
-        rows = result.fetchall()
-        if rows:
-            logger.info(f"Migrating original_published_at for {len(rows)} existing episodes")
-            for row in rows:
-                original_date = row[1] if row[1] else row[2]  # published_at or created_at
-                if original_date:
-                    conn.execute(
-                        text("UPDATE episodes SET original_published_at = :date WHERE id = :id"),
-                        {"date": original_date, "id": row[0]}
-                    )
+        migration_name = "populate_original_published_at"
+        result = conn.execute(
+            text("SELECT 1 FROM _migrations WHERE name = :name"),
+            {"name": migration_name}
+        )
+        if not result.fetchone():
+            result = conn.execute(text(
+                "SELECT id, published_at, created_at FROM episodes WHERE original_published_at IS NULL"
+            ))
+            rows = result.fetchall()
+            if rows:
+                logger.info(f"Migrating original_published_at for {len(rows)} existing episodes")
+                for row in rows:
+                    original_date = row[1] if row[1] else row[2]  # published_at or created_at
+                    if original_date:
+                        conn.execute(
+                            text("UPDATE episodes SET original_published_at = :date WHERE id = :id"),
+                            {"date": original_date, "id": row[0]}
+                        )
+                conn.commit()
+            # Mark migration as complete
+            conn.execute(
+                text("INSERT INTO _migrations (name) VALUES (:name)"),
+                {"name": migration_name}
+            )
             conn.commit()
+            logger.info(f"Data migration '{migration_name}' completed")
 
 
 def init_db():
