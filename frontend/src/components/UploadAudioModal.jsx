@@ -38,6 +38,12 @@ export default function UploadAudioModal({ feedId, onClose, onUploaded }) {
       return;
     }
 
+    // Check MIME type if available (additional client-side validation)
+    if (file.type && !file.type.startsWith('audio/')) {
+      setError(`File does not appear to be an audio file. MIME type: ${file.type}`);
+      return;
+    }
+
     if (file.size > MAX_FILE_SIZE) {
       setError(`File too large. Maximum size: ${formatBytes(MAX_FILE_SIZE)}`);
       return;

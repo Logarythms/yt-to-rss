@@ -3,7 +3,7 @@ import logging
 from app.celery_app import celery_app
 from app.database import SessionLocal
 from app.models import Episode, EpisodeStatus
-from app.services.audio_converter import convert_to_mp3
+from app.services.audio_converter import convert_to_mp3, verify_audio_file
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -17,10 +17,14 @@ def convert_uploaded_audio(self, episode_id: str, temp_input_path: str):
     Used for large files that would timeout in the API request.
     """
     db = SessionLocal()
+    output_path = None
     try:
         episode = db.query(Episode).filter(Episode.id == episode_id).first()
         if not episode:
             logger.error(f"Episode {episode_id} not found")
+            # Clean up temp file even if episode not found
+            if os.path.exists(temp_input_path):
+                os.remove(temp_input_path)
             return
 
         # Update status to downloading (processing)
@@ -28,6 +32,11 @@ def convert_uploaded_audio(self, episode_id: str, temp_input_path: str):
         db.commit()
 
         try:
+            # Verify the file is actually audio using ffprobe
+            is_audio, verify_error = verify_audio_file(temp_input_path)
+            if not is_audio:
+                raise Exception(verify_error or "Invalid audio file")
+
             # Create output path
             os.makedirs(settings.audio_dir, exist_ok=True)
             output_path = os.path.join(settings.audio_dir, f"{episode_id}.mp3")
@@ -45,7 +54,7 @@ def convert_uploaded_audio(self, episode_id: str, temp_input_path: str):
 
             logger.info(f"Successfully converted uploaded audio for episode {episode_id}")
 
-            # Clean up temp file
+            # Clean up temp file after successful conversion
             if os.path.exists(temp_input_path):
                 os.remove(temp_input_path)
 
@@ -55,9 +64,17 @@ def convert_uploaded_audio(self, episode_id: str, temp_input_path: str):
             episode.error_message = str(e)
             db.commit()
 
-            # Retry with exponential backoff
-            if self.request.retries < self.max_retries:
+            # Clean up partial output file on failure
+            if output_path and os.path.exists(output_path):
+                os.remove(output_path)
+
+            # Only retry for conversion failures, not validation failures
+            if self.request.retries < self.max_retries and "Invalid audio" not in str(e):
                 raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
+            else:
+                # Clean up temp file on final failure
+                if os.path.exists(temp_input_path):
+                    os.remove(temp_input_path)
 
     finally:
         db.close()

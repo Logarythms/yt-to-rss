@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 ALLOWED_EXTENSIONS = {'.mp3', '.m4a', '.wav', '.flac', '.ogg'}
 MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB
+LARGE_FILE_THRESHOLD = 100 * 1024 * 1024  # 100MB - files above this use Celery
 
 
 @dataclass
@@ -33,6 +34,53 @@ def validate_audio_file(filename: str, file_size: int) -> tuple[bool, str]:
         return False, f"File too large. Maximum size: {MAX_FILE_SIZE // (1024*1024)}MB"
 
     return True, ""
+
+
+def verify_audio_file(file_path: str) -> tuple[bool, str]:
+    """
+    Verify file is actually audio using ffprobe (magic byte validation).
+    This prevents accepting non-audio files renamed with audio extensions.
+    Returns (is_valid, error_message).
+    """
+    try:
+        result = subprocess.run(
+            [
+                'ffprobe',
+                '-v', 'error',
+                '-select_streams', 'a:0',
+                '-show_entries', 'stream=codec_type',
+                '-of', 'csv=p=0',
+                file_path
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        # ffprobe returns non-zero if file is invalid or has no audio stream
+        if result.returncode != 0:
+            logger.warning(f"ffprobe validation failed for {file_path}: {result.stderr}")
+            return False, "File does not appear to be a valid audio file"
+
+        # Check that we found an audio stream
+        output = result.stdout.strip()
+        if output != 'audio':
+            logger.warning(f"No audio stream found in {file_path}, got: {output}")
+            return False, "File does not contain an audio stream"
+
+        return True, ""
+
+    except subprocess.TimeoutExpired:
+        logger.warning(f"ffprobe timeout validating {file_path}")
+        return False, "Audio validation timed out"
+    except FileNotFoundError:
+        logger.error("ffprobe not found - ensure ffmpeg is installed")
+        # If ffprobe is not available, allow the file (fail open for compatibility)
+        # This is a trade-off; in production ffprobe should always be available
+        return True, ""
+    except Exception as e:
+        logger.error(f"ffprobe validation error: {e}")
+        return False, "Failed to validate audio file"
 
 
 def extract_metadata(file_path: str) -> AudioMetadata:

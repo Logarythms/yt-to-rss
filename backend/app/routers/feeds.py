@@ -18,10 +18,12 @@ from app.auth import get_current_user
 from app.config import get_settings
 from app.services.youtube import extract_video_ids_from_urls, get_video_info
 from app.services.audio_converter import (
-    validate_audio_file, extract_metadata, convert_to_mp3, is_mp3, MAX_FILE_SIZE
+    validate_audio_file, extract_metadata, convert_to_mp3, is_mp3, verify_audio_file,
+    MAX_FILE_SIZE, LARGE_FILE_THRESHOLD
 )
 from app.services.thumbnail import process_thumbnail, validate_thumbnail, delete_thumbnail
 from app.tasks.download import download_episode
+from app.tasks.convert import convert_uploaded_audio
 
 router = APIRouter(prefix="/api/feeds", tags=["feeds"])
 settings = get_settings()
@@ -182,13 +184,15 @@ async def delete_feed(
     if not feed:
         raise HTTPException(status_code=404, detail="Feed not found")
 
-    # Delete audio files
+    # Delete episode files (audio and thumbnails)
     episodes = db.query(Episode).filter(Episode.feed_id == feed_id).all()
     for episode in episodes:
         if episode.audio_path and os.path.exists(episode.audio_path):
             os.remove(episode.audio_path)
+        if episode.thumbnail_path and os.path.exists(episode.thumbnail_path):
+            os.remove(episode.thumbnail_path)
 
-    # Delete artwork
+    # Delete feed artwork
     if feed.artwork_path and os.path.exists(feed.artwork_path):
         os.remove(feed.artwork_path)
 
@@ -269,19 +273,35 @@ async def upload_audio(
     if not feed:
         raise HTTPException(status_code=404, detail="Feed not found")
 
-    # Validate audio file
-    audio_content = await audio.read()
-    is_valid, error_msg = validate_audio_file(audio.filename, len(audio_content))
-    if not is_valid:
-        raise HTTPException(status_code=400, detail=error_msg)
+    # Security: sanitize filename to prevent path traversal
+    safe_filename = os.path.basename(audio.filename) if audio.filename else "upload.mp3"
 
-    # Save to temp file for processing
+    # Validate file extension and get file size via chunked read
     temp_dir = tempfile.mkdtemp()
-    temp_input_path = os.path.join(temp_dir, audio.filename)
+    temp_input_path = os.path.join(temp_dir, safe_filename)
 
     try:
+        # Chunked file write to avoid loading entire file in memory
+        file_size = 0
         with open(temp_input_path, 'wb') as f:
-            f.write(audio_content)
+            while chunk := await audio.read(8192):  # 8KB chunks
+                file_size += len(chunk)
+                if file_size > MAX_FILE_SIZE:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"File too large. Maximum size: {MAX_FILE_SIZE // (1024*1024)}MB"
+                    )
+                f.write(chunk)
+
+        # Validate audio file extension
+        is_valid, error_msg = validate_audio_file(safe_filename, file_size)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=error_msg)
+
+        # Security: verify file is actually audio using ffprobe (magic byte validation)
+        is_audio, verify_error = verify_audio_file(temp_input_path)
+        if not is_audio:
+            raise HTTPException(status_code=400, detail=verify_error or "Invalid audio file")
 
         # Extract metadata
         metadata = extract_metadata(temp_input_path)
@@ -294,20 +314,9 @@ async def upload_audio(
         if not episode_title and metadata.title:
             episode_title = metadata.title
         if not episode_title:
-            episode_title = os.path.splitext(audio.filename)[0]
+            episode_title = os.path.splitext(safe_filename)[0]
 
-        # Create output path
-        os.makedirs(settings.audio_dir, exist_ok=True)
-        output_path = os.path.join(settings.audio_dir, f"{episode_id}.mp3")
-
-        # Convert to MP3 (or copy if already MP3)
-        if not convert_to_mp3(temp_input_path, output_path):
-            raise HTTPException(status_code=500, detail="Failed to process audio file")
-
-        # Get file size
-        file_size = os.path.getsize(output_path)
-
-        # Process thumbnail if provided
+        # Process thumbnail if provided (before potentially going async)
         thumbnail_path = None
         if thumbnail and thumbnail.filename:
             is_valid, error_msg = validate_thumbnail(thumbnail.filename)
@@ -321,6 +330,63 @@ async def upload_audio(
             if not process_thumbnail(thumbnail_content, thumbnail_path):
                 thumbnail_path = None  # Failed, but continue without thumbnail
 
+        # For large files (>100MB), use Celery for background processing
+        if file_size > LARGE_FILE_THRESHOLD:
+            # Move temp file to persistent location for Celery task
+            os.makedirs(settings.data_dir, exist_ok=True)
+            persistent_temp_path = os.path.join(settings.data_dir, "temp", f"{episode_id}_upload")
+            os.makedirs(os.path.dirname(persistent_temp_path), exist_ok=True)
+            shutil.move(temp_input_path, persistent_temp_path)
+
+            # Create episode with pending status
+            episode = Episode(
+                id=episode_id,
+                feed_id=feed_id,
+                youtube_id=None,
+                title=episode_title,
+                description=description,
+                thumbnail_url=None,
+                audio_path=None,  # Will be set by Celery task
+                file_size=None,  # Will be set by Celery task
+                duration=metadata.duration,
+                published_at=datetime.utcnow(),
+                status=EpisodeStatus.pending,
+                source_type=EpisodeSource.upload,
+                original_filename=safe_filename,
+                thumbnail_path=thumbnail_path,
+            )
+
+            try:
+                db.add(episode)
+                db.commit()
+                db.refresh(episode)
+            except Exception as e:
+                # Clean up files if DB commit fails
+                if os.path.exists(persistent_temp_path):
+                    os.remove(persistent_temp_path)
+                if thumbnail_path and os.path.exists(thumbnail_path):
+                    os.remove(thumbnail_path)
+                raise
+
+            # Queue Celery task after commit
+            convert_uploaded_audio.delay(episode.id, persistent_temp_path)
+
+            return EpisodeResponse.model_validate(episode)
+
+        # For smaller files, process synchronously
+        os.makedirs(settings.audio_dir, exist_ok=True)
+        output_path = os.path.join(settings.audio_dir, f"{episode_id}.mp3")
+
+        # Convert to MP3 (or copy if already MP3)
+        if not convert_to_mp3(temp_input_path, output_path):
+            # Clean up thumbnail if conversion failed
+            if thumbnail_path and os.path.exists(thumbnail_path):
+                os.remove(thumbnail_path)
+            raise HTTPException(status_code=500, detail="Failed to process audio file")
+
+        # Get actual output file size
+        output_file_size = os.path.getsize(output_path)
+
         # Create episode
         episode = Episode(
             id=episode_id,
@@ -330,22 +396,31 @@ async def upload_audio(
             description=description,
             thumbnail_url=None,
             audio_path=output_path,
-            file_size=file_size,
+            file_size=output_file_size,
             duration=metadata.duration,
             published_at=datetime.utcnow(),
             status=EpisodeStatus.ready,
             source_type=EpisodeSource.upload,
-            original_filename=audio.filename,
+            original_filename=safe_filename,
             thumbnail_path=thumbnail_path,
         )
-        db.add(episode)
-        db.commit()
-        db.refresh(episode)
+
+        try:
+            db.add(episode)
+            db.commit()
+            db.refresh(episode)
+        except Exception as e:
+            # Clean up orphaned files if DB commit fails
+            if os.path.exists(output_path):
+                os.remove(output_path)
+            if thumbnail_path and os.path.exists(thumbnail_path):
+                os.remove(thumbnail_path)
+            raise
 
         return EpisodeResponse.model_validate(episode)
 
     finally:
-        # Clean up temp files
+        # Clean up temp directory
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 

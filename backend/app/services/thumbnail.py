@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
 MAX_DIMENSION = 1400  # iTunes recommended podcast artwork size
 THUMBNAIL_QUALITY = 85
+MAX_THUMBNAIL_SIZE = 10 * 1024 * 1024  # 10MB max thumbnail size
 
 
 def validate_thumbnail(filename: str) -> tuple[bool, str]:
@@ -37,6 +38,11 @@ def process_thumbnail(
     Returns True on success, False on failure.
     """
     try:
+        # Check file size limit
+        if len(input_data) > MAX_THUMBNAIL_SIZE:
+            logger.warning(f"Thumbnail too large: {len(input_data)} bytes (max {MAX_THUMBNAIL_SIZE})")
+            return False
+
         # Create output directory if needed
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
