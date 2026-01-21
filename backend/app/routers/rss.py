@@ -50,10 +50,13 @@ async def get_audio(
     if not os.path.exists(episode.audio_path):
         raise HTTPException(status_code=404, detail="Audio file not found")
 
+    # Use youtube_id for filename if available, otherwise use episode_id
+    filename = f"{episode.youtube_id}.mp3" if episode.youtube_id else f"{episode.id}.mp3"
+
     return FileResponse(
         episode.audio_path,
         media_type="audio/mpeg",
-        filename=f"{episode.youtube_id}.mp3",
+        filename=filename,
     )
 
 
@@ -109,5 +112,24 @@ async def get_thumbnail(
 
     return Response(
         content=response.content,
+        media_type="image/jpeg",
+    )
+
+
+@router.get("/episode-thumbnail/{episode_id}.jpg")
+async def get_episode_thumbnail(
+    episode_id: str,
+    db: Session = Depends(get_db),
+):
+    """Get locally stored episode thumbnail (public, no auth required)."""
+    episode = db.query(Episode).filter(Episode.id == episode_id).first()
+    if not episode:
+        raise HTTPException(status_code=404, detail="Episode not found")
+
+    if not episode.thumbnail_path or not os.path.exists(episode.thumbnail_path):
+        raise HTTPException(status_code=404, detail="Thumbnail not found")
+
+    return FileResponse(
+        episode.thumbnail_path,
         media_type="image/jpeg",
     )

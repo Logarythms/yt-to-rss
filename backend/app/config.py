@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     data_dir: str = "./data"
     audio_dir: str = "./data/audio"
     artwork_dir: str = "./data/artwork"
+    thumbnail_dir: str = "./data/thumbnails"
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

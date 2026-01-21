@@ -17,6 +17,11 @@ class EpisodeStatus(PyEnum):
     failed = "failed"
 
 
+class EpisodeSource(PyEnum):
+    youtube = "youtube"
+    upload = "upload"
+
+
 class Feed(Base):
     __tablename__ = "feeds"
 
@@ -36,7 +41,7 @@ class Episode(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     feed_id = Column(String(36), ForeignKey("feeds.id"), nullable=False)
-    youtube_id = Column(String(20), nullable=False)
+    youtube_id = Column(String(20), nullable=True)  # Nullable for uploaded episodes
     title = Column(String(500), nullable=False)
     description = Column(Text, nullable=True)
     thumbnail_url = Column(String(500), nullable=True)
@@ -47,5 +52,9 @@ class Episode(Base):
     status = Column(Enum(EpisodeStatus), default=EpisodeStatus.pending)
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    # New fields for uploaded audio
+    source_type = Column(Enum(EpisodeSource), default=EpisodeSource.youtube)
+    original_filename = Column(String(500), nullable=True)
+    thumbnail_path = Column(String(500), nullable=True)  # Local episode thumbnail
 
     feed = relationship("Feed", back_populates="episodes")

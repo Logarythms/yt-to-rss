@@ -33,6 +33,12 @@ def run_migrations():
         ("feeds", "author", "ALTER TABLE feeds ADD COLUMN author VARCHAR(255)"),
         # Add file_size column to episodes table
         ("episodes", "file_size", "ALTER TABLE episodes ADD COLUMN file_size INTEGER"),
+        # Add source_type column for uploaded audio support
+        ("episodes", "source_type", "ALTER TABLE episodes ADD COLUMN source_type VARCHAR(10) DEFAULT 'youtube'"),
+        # Add original_filename column for uploaded audio
+        ("episodes", "original_filename", "ALTER TABLE episodes ADD COLUMN original_filename VARCHAR(500)"),
+        # Add thumbnail_path column for local episode thumbnails
+        ("episodes", "thumbnail_path", "ALTER TABLE episodes ADD COLUMN thumbnail_path VARCHAR(500)"),
     ]
 
     with engine.connect() as conn:

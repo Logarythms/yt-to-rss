@@ -1,11 +1,13 @@
 import os
 import shutil
+import tempfile
+from datetime import datetime
 from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import Optional
 from app.database import get_db
-from app.models import Feed, Episode, EpisodeStatus
+from app.models import Feed, Episode, EpisodeStatus, EpisodeSource
 from sqlalchemy import func
 from app.schemas import (
     FeedCreate, FeedUpdate, FeedResponse, FeedListResponse,
@@ -15,6 +17,10 @@ from app.schemas import (
 from app.auth import get_current_user
 from app.config import get_settings
 from app.services.youtube import extract_video_ids_from_urls, get_video_info
+from app.services.audio_converter import (
+    validate_audio_file, extract_metadata, convert_to_mp3, is_mp3, MAX_FILE_SIZE
+)
+from app.services.thumbnail import process_thumbnail, validate_thumbnail, delete_thumbnail
 from app.tasks.download import download_episode
 
 router = APIRouter(prefix="/api/feeds", tags=["feeds"])
@@ -248,6 +254,101 @@ async def add_videos(
     )
 
 
+@router.post("/{feed_id}/upload-audio", response_model=EpisodeResponse)
+async def upload_audio(
+    feed_id: str,
+    audio: UploadFile = File(...),
+    thumbnail: Optional[UploadFile] = File(None),
+    title: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    """Upload an audio file as a new episode."""
+    feed = db.query(Feed).filter(Feed.id == feed_id).first()
+    if not feed:
+        raise HTTPException(status_code=404, detail="Feed not found")
+
+    # Validate audio file
+    audio_content = await audio.read()
+    is_valid, error_msg = validate_audio_file(audio.filename, len(audio_content))
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
+
+    # Save to temp file for processing
+    temp_dir = tempfile.mkdtemp()
+    temp_input_path = os.path.join(temp_dir, audio.filename)
+
+    try:
+        with open(temp_input_path, 'wb') as f:
+            f.write(audio_content)
+
+        # Extract metadata
+        metadata = extract_metadata(temp_input_path)
+
+        # Generate episode ID
+        episode_id = str(uuid4())
+
+        # Determine title (priority: form input > metadata > filename)
+        episode_title = title
+        if not episode_title and metadata.title:
+            episode_title = metadata.title
+        if not episode_title:
+            episode_title = os.path.splitext(audio.filename)[0]
+
+        # Create output path
+        os.makedirs(settings.audio_dir, exist_ok=True)
+        output_path = os.path.join(settings.audio_dir, f"{episode_id}.mp3")
+
+        # Convert to MP3 (or copy if already MP3)
+        if not convert_to_mp3(temp_input_path, output_path):
+            raise HTTPException(status_code=500, detail="Failed to process audio file")
+
+        # Get file size
+        file_size = os.path.getsize(output_path)
+
+        # Process thumbnail if provided
+        thumbnail_path = None
+        if thumbnail and thumbnail.filename:
+            is_valid, error_msg = validate_thumbnail(thumbnail.filename)
+            if not is_valid:
+                raise HTTPException(status_code=400, detail=error_msg)
+
+            os.makedirs(settings.thumbnail_dir, exist_ok=True)
+            thumbnail_path = os.path.join(settings.thumbnail_dir, f"{episode_id}.jpg")
+            thumbnail_content = await thumbnail.read()
+
+            if not process_thumbnail(thumbnail_content, thumbnail_path):
+                thumbnail_path = None  # Failed, but continue without thumbnail
+
+        # Create episode
+        episode = Episode(
+            id=episode_id,
+            feed_id=feed_id,
+            youtube_id=None,
+            title=episode_title,
+            description=description,
+            thumbnail_url=None,
+            audio_path=output_path,
+            file_size=file_size,
+            duration=metadata.duration,
+            published_at=datetime.utcnow(),
+            status=EpisodeStatus.ready,
+            source_type=EpisodeSource.upload,
+            original_filename=audio.filename,
+            thumbnail_path=thumbnail_path,
+        )
+        db.add(episode)
+        db.commit()
+        db.refresh(episode)
+
+        return EpisodeResponse.model_validate(episode)
+
+    finally:
+        # Clean up temp files
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+
 @router.delete("/{feed_id}/episodes/{episode_id}")
 async def delete_episode(
     feed_id: str,
@@ -267,6 +368,10 @@ async def delete_episode(
     # Delete audio file
     if episode.audio_path and os.path.exists(episode.audio_path):
         os.remove(episode.audio_path)
+
+    # Delete thumbnail file (for uploaded episodes)
+    if episode.thumbnail_path and os.path.exists(episode.thumbnail_path):
+        os.remove(episode.thumbnail_path)
 
     db.delete(episode)
     db.commit()

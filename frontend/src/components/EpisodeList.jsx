@@ -58,13 +58,25 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
     );
   }
 
+  // Get thumbnail URL - prefer local thumbnail_path, fallback to YouTube thumbnail_url
+  const getThumbnailUrl = (episode) => {
+    if (episode.thumbnail_path) {
+      return `/episode-thumbnail/${episode.id}.jpg`;
+    }
+    return episode.thumbnail_url;
+  };
+
   return (
     <div className="divide-y divide-gray-200">
-      {episodes.map((episode) => (
+      {episodes.map((episode) => {
+        const thumbnailUrl = getThumbnailUrl(episode);
+        const isUploaded = episode.source_type === 'upload';
+
+        return (
         <div key={episode.id} className="py-4 flex items-start gap-4">
-          {episode.thumbnail_url && (
+          {thumbnailUrl && (
             <img
-              src={episode.thumbnail_url}
+              src={thumbnailUrl}
               alt=""
               className="w-32 h-20 object-cover rounded flex-shrink-0"
             />
@@ -95,14 +107,18 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
               {episode.published_at && (
                 <span>{new Date(episode.published_at).toLocaleDateString()}</span>
               )}
-              <a
-                href={`https://www.youtube.com/watch?v=${episode.youtube_id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-indigo-600 hover:text-indigo-500"
-              >
-                YouTube
-              </a>
+              {isUploaded ? (
+                <span className="text-purple-600 font-medium">Uploaded</span>
+              ) : episode.youtube_id ? (
+                <a
+                  href={`https://www.youtube.com/watch?v=${episode.youtube_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-indigo-600 hover:text-indigo-500"
+                >
+                  YouTube
+                </a>
+              ) : null}
             </div>
             {episode.error_message && (
               <p className="mt-2 text-sm text-red-600">
@@ -129,7 +145,8 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
             </div>
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

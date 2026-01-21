@@ -62,8 +62,11 @@ def generate_rss_feed(feed: Feed, db: Session) -> str:
 
         # Audio enclosure
         audio_url = f"{base_url}/audio/{episode.id}.mp3"
-        file_size = get_audio_file_size(episode.youtube_id)
-        fe.enclosure(audio_url, str(file_size), 'audio/mpeg')
+        # Use file_size from episode record, fallback to filesystem check for YouTube episodes
+        file_size = episode.file_size
+        if file_size is None and episode.youtube_id:
+            file_size = get_audio_file_size(episode.youtube_id)
+        fe.enclosure(audio_url, str(file_size or 0), 'audio/mpeg')
 
         # Podcast extensions
         if episode.duration:
@@ -73,12 +76,16 @@ def generate_rss_feed(feed: Feed, db: Session) -> str:
             duration_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
             fe.podcast.itunes_duration(duration_str)
 
-        # Episode artwork via proxy (with proper .jpg extension)
-        if episode.thumbnail_url:
+        # Episode artwork - prefer local thumbnail, fallback to YouTube proxy
+        if episode.thumbnail_path:
+            thumbnail_url = f"{base_url}/episode-thumbnail/{episode.id}.jpg"
+            fe.podcast.itunes_image(thumbnail_url)
+        elif episode.thumbnail_url:
             thumbnail_url = f"{base_url}/thumbnail/{episode.id}.jpg"
             fe.podcast.itunes_image(thumbnail_url)
 
-        # Link to original YouTube video
-        fe.link(href=f"https://www.youtube.com/watch?v={episode.youtube_id}")
+        # Link to original YouTube video (only for YouTube episodes)
+        if episode.youtube_id:
+            fe.link(href=f"https://www.youtube.com/watch?v={episode.youtube_id}")
 
     return fg.rss_str(pretty=True).decode('utf-8')

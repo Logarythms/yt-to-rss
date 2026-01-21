@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
-from app.models import EpisodeStatus
+from app.models import EpisodeStatus, EpisodeSource
 
 
 # Auth schemas
@@ -48,7 +48,7 @@ class FeedListResponse(BaseModel):
 class EpisodeResponse(BaseModel):
     id: str
     feed_id: str
-    youtube_id: str
+    youtube_id: Optional[str]  # Nullable for uploaded episodes
     title: str
     description: Optional[str]
     thumbnail_url: Optional[str]
@@ -59,6 +59,9 @@ class EpisodeResponse(BaseModel):
     status: EpisodeStatus
     error_message: Optional[str]
     created_at: datetime
+    source_type: EpisodeSource = EpisodeSource.youtube
+    original_filename: Optional[str] = None
+    thumbnail_path: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

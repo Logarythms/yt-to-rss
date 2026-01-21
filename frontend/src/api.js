@@ -111,6 +111,51 @@ export const api = {
     method: 'POST',
   }),
 
+  uploadAudio: (feedId, audio, thumbnail, title, description, onProgress) => {
+    return new Promise((resolve, reject) => {
+      const formData = new FormData();
+      formData.append('audio', audio);
+      if (thumbnail) formData.append('thumbnail', thumbnail);
+      if (title) formData.append('title', title);
+      if (description) formData.append('description', description);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${API_BASE}/feeds/${feedId}/upload-audio`);
+
+      const token = getToken();
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      }
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && onProgress) {
+          const percent = Math.round((event.loaded / event.total) * 100);
+          onProgress(percent);
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status === 200 || xhr.status === 201) {
+          resolve(JSON.parse(xhr.responseText));
+        } else if (xhr.status === 401) {
+          clearToken();
+          window.location.href = '/login';
+          reject(new Error('Unauthorized'));
+        } else {
+          try {
+            const error = JSON.parse(xhr.responseText);
+            reject(new Error(error.detail || 'Upload failed'));
+          } catch {
+            reject(new Error('Upload failed'));
+          }
+        }
+      };
+
+      xhr.onerror = () => reject(new Error('Network error'));
+      xhr.send(formData);
+    });
+  },
+
   // Storage
   getStorage: () => request('/feeds/storage/info'),
 };

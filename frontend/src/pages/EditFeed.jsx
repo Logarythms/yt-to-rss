@@ -4,6 +4,7 @@ import { api } from '../api';
 import FeedForm from '../components/FeedForm';
 import EpisodeList from '../components/EpisodeList';
 import AddVideosModal from '../components/AddVideosModal';
+import UploadAudioModal from '../components/UploadAudioModal';
 
 export default function EditFeed() {
   const { id } = useParams();
@@ -12,6 +13,7 @@ export default function EditFeed() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAddVideos, setShowAddVideos] = useState(false);
+  const [showUploadAudio, setShowUploadAudio] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const loadFeed = useCallback(async () => {
@@ -57,6 +59,10 @@ export default function EditFeed() {
   };
 
   const handleVideosAdded = (result) => {
+    loadFeed();
+  };
+
+  const handleAudioUploaded = (result) => {
     loadFeed();
   };
 
@@ -151,12 +157,20 @@ export default function EditFeed() {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium text-gray-900">Episodes</h2>
-          <button
-            onClick={() => setShowAddVideos(true)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700"
-          >
-            Add Videos
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowUploadAudio(true)}
+              className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50"
+            >
+              Upload Audio
+            </button>
+            <button
+              onClick={() => setShowAddVideos(true)}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700"
+            >
+              Add Videos
+            </button>
+          </div>
         </div>
 
         <EpisodeList
@@ -171,6 +185,14 @@ export default function EditFeed() {
           feedId={id}
           onClose={() => setShowAddVideos(false)}
           onAdded={handleVideosAdded}
+        />
+      )}
+
+      {showUploadAudio && (
+        <UploadAudioModal
+          feedId={id}
+          onClose={() => setShowUploadAudio(false)}
+          onUploaded={handleAudioUploaded}
         />
       )}
     </div>
