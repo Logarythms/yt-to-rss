@@ -1,5 +1,9 @@
 # CLAUDE.md - Project Context for Claude
 
+## Instructions for Claude
+
+- **Auto-commit**: After making any code changes, automatically create a git commit with a descriptive message. Do not push to remote.
+
 ## Project Overview
 
 yt-to-rss is a self-hosted web application that converts YouTube videos into podcast RSS feeds. Users can add videos or playlists, and the app downloads the audio, generates valid podcast RSS, and serves it for podcast apps to consume.
