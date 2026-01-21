@@ -20,14 +20,25 @@ def create_access_token(expires_delta: Optional[timedelta] = None) -> str:
     expire = datetime.utcnow() + (
         expires_delta or timedelta(minutes=settings.access_token_expire_minutes)
     )
-    to_encode = {"exp": expire, "sub": "admin"}
+    to_encode = {
+        "exp": expire,
+        "sub": "admin",
+        "iss": "yt-to-rss",
+        "aud": "yt-to-rss-api",
+    }
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 
 def verify_token(token: str) -> bool:
     """Verify JWT token."""
     try:
-        jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        jwt.decode(
+            token,
+            settings.secret_key,
+            algorithms=[settings.algorithm],
+            audience="yt-to-rss-api",
+            issuer="yt-to-rss",
+        )
         return True
     except JWTError:
         return False

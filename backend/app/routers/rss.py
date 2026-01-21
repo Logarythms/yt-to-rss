@@ -1,5 +1,7 @@
 import os
 import httpx
+import logging
+from urllib.parse import urlparse
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response, FileResponse
 from sqlalchemy.orm import Session
@@ -8,9 +10,41 @@ from app.models import Feed, Episode, EpisodeStatus
 from app.services.rss_generator import generate_rss_feed
 from app.config import get_settings
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["rss"])
 settings = get_settings()
 http_client = httpx.AsyncClient(timeout=30.0)
+
+# Allowed domains for thumbnail proxy (SSRF prevention)
+ALLOWED_THUMBNAIL_DOMAINS = {'i.ytimg.com', 'i9.ytimg.com', 'img.youtube.com'}
+
+
+def validate_file_path(file_path: str, allowed_dir: str) -> bool:
+    """
+    Validate that a file path is within the allowed directory.
+    Prevents path traversal attacks by resolving symlinks and checking containment.
+    """
+    try:
+        # Resolve to absolute path (handles symlinks, .., etc.)
+        real_path = os.path.realpath(file_path)
+        real_allowed_dir = os.path.realpath(allowed_dir)
+
+        # Check that the file is within the allowed directory
+        return real_path.startswith(real_allowed_dir + os.sep) or real_path == real_allowed_dir
+    except (TypeError, ValueError):
+        return False
+
+
+def validate_thumbnail_url(url: str) -> bool:
+    """
+    Validate that a thumbnail URL is from an allowed domain.
+    Prevents SSRF by only allowing YouTube image domains.
+    """
+    try:
+        parsed = urlparse(url)
+        return parsed.hostname in ALLOWED_THUMBNAIL_DOMAINS and parsed.scheme == 'https'
+    except Exception:
+        return False
 
 
 @router.get("/rss/{feed_id}")
@@ -47,6 +81,11 @@ async def get_audio(
     if episode.status != EpisodeStatus.ready or not episode.audio_path:
         raise HTTPException(status_code=404, detail="Audio not ready")
 
+    # Path traversal prevention
+    if not validate_file_path(episode.audio_path, settings.audio_dir):
+        logger.warning(f"Path traversal attempt blocked for audio: {episode.audio_path}")
+        raise HTTPException(status_code=404, detail="Audio file not found")
+
     if not os.path.exists(episode.audio_path):
         raise HTTPException(status_code=404, detail="Audio file not found")
 
@@ -70,7 +109,15 @@ async def get_artwork(
     if not feed:
         raise HTTPException(status_code=404, detail="Feed not found")
 
-    if not feed.artwork_path or not os.path.exists(feed.artwork_path):
+    if not feed.artwork_path:
+        raise HTTPException(status_code=404, detail="Artwork not found")
+
+    # Path traversal prevention
+    if not validate_file_path(feed.artwork_path, settings.artwork_dir):
+        logger.warning(f"Path traversal attempt blocked for artwork: {feed.artwork_path}")
+        raise HTTPException(status_code=404, detail="Artwork not found")
+
+    if not os.path.exists(feed.artwork_path):
         raise HTTPException(status_code=404, detail="Artwork not found")
 
     # Determine media type from extension
@@ -100,7 +147,20 @@ async def get_thumbnail(
     if not episode:
         raise HTTPException(status_code=404, detail="Episode not found")
 
+    # Prefer locally cached thumbnail if available
+    if episode.thumbnail_path and os.path.exists(episode.thumbnail_path):
+        if validate_file_path(episode.thumbnail_path, settings.thumbnail_dir):
+            return FileResponse(
+                episode.thumbnail_path,
+                media_type="image/jpeg",
+            )
+
     if not episode.thumbnail_url:
+        raise HTTPException(status_code=404, detail="Thumbnail not available")
+
+    # SSRF prevention: validate URL domain before fetching
+    if not validate_thumbnail_url(episode.thumbnail_url):
+        logger.warning(f"SSRF attempt blocked for thumbnail URL: {episode.thumbnail_url}")
         raise HTTPException(status_code=404, detail="Thumbnail not available")
 
     # Fetch the thumbnail from YouTube
@@ -126,7 +186,15 @@ async def get_episode_thumbnail(
     if not episode:
         raise HTTPException(status_code=404, detail="Episode not found")
 
-    if not episode.thumbnail_path or not os.path.exists(episode.thumbnail_path):
+    if not episode.thumbnail_path:
+        raise HTTPException(status_code=404, detail="Thumbnail not found")
+
+    # Path traversal prevention
+    if not validate_file_path(episode.thumbnail_path, settings.thumbnail_dir):
+        logger.warning(f"Path traversal attempt blocked for thumbnail: {episode.thumbnail_path}")
+        raise HTTPException(status_code=404, detail="Thumbnail not found")
+
+    if not os.path.exists(episode.thumbnail_path):
         raise HTTPException(status_code=404, detail="Thumbnail not found")
 
     return FileResponse(

@@ -19,6 +19,7 @@ dependencies = [
     "aiofiles>=23.2.0",
     "httpx>=0.26.0",
     "Pillow>=10.0.0",
+    "slowapi>=0.1.9",
 ]
 
 [build-system]

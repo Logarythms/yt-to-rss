@@ -59,9 +59,15 @@ def convert_uploaded_audio(self, episode_id: str, temp_input_path: str):
                 os.remove(temp_input_path)
 
         except Exception as e:
-            logger.error(f"Failed to convert audio for episode {episode_id}: {e}")
+            # Log full error for debugging, store sanitized message for users
+            logger.error(f"Failed to convert audio for episode {episode_id}. Full error: {e}")
             episode.status = EpisodeStatus.failed
-            episode.error_message = str(e)
+
+            # Provide type hints in sanitized error without exposing internal details
+            if "Invalid audio" in str(e):
+                episode.error_message = "Invalid audio file. The file could not be processed."
+            else:
+                episode.error_message = "Conversion failed. Check server logs for details."
             db.commit()
 
             # Clean up partial output file on failure

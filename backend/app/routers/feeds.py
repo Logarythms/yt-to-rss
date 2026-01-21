@@ -22,6 +22,7 @@ from app.services.audio_converter import (
     MAX_FILE_SIZE, LARGE_FILE_THRESHOLD
 )
 from app.services.thumbnail import process_thumbnail, validate_thumbnail, delete_thumbnail
+from app.services.artwork import validate_artwork_extension, validate_and_process_artwork
 from app.tasks.download import download_episode
 from app.tasks.convert import convert_uploaded_audio
 
@@ -76,14 +77,25 @@ async def create_feed(
     db.add(feed)
     db.flush()  # Get the ID
 
-    # Handle artwork upload
+    # Handle artwork upload with validation
     if artwork and artwork.filename:
-        os.makedirs(settings.artwork_dir, exist_ok=True)
-        ext = os.path.splitext(artwork.filename)[1] or '.jpg'
-        artwork_path = os.path.join(settings.artwork_dir, f"{feed.id}{ext}")
+        # Validate extension
+        is_valid, error_msg = validate_artwork_extension(artwork.filename)
+        if not is_valid:
+            db.rollback()
+            raise HTTPException(status_code=400, detail=error_msg)
 
-        with open(artwork_path, "wb") as f:
-            shutil.copyfileobj(artwork.file, f)
+        # Read artwork data
+        artwork_data = await artwork.read()
+
+        os.makedirs(settings.artwork_dir, exist_ok=True)
+        artwork_path = os.path.join(settings.artwork_dir, f"{feed.id}.jpg")
+
+        # Validate and process artwork (converts to JPEG)
+        success, error_msg = validate_and_process_artwork(artwork_data, artwork_path)
+        if not success:
+            db.rollback()
+            raise HTTPException(status_code=400, detail=error_msg)
 
         feed.artwork_path = artwork_path
 
@@ -151,19 +163,28 @@ async def update_feed(
     if description is not None:
         feed.description = description
 
-    # Handle artwork upload
+    # Handle artwork upload with validation
     if artwork and artwork.filename:
-        os.makedirs(settings.artwork_dir, exist_ok=True)
-        ext = os.path.splitext(artwork.filename)[1] or '.jpg'
-        artwork_path = os.path.join(settings.artwork_dir, f"{feed.id}{ext}")
+        # Validate extension
+        is_valid, error_msg = validate_artwork_extension(artwork.filename)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=error_msg)
 
-        # Remove old artwork if different extension
+        # Read artwork data
+        artwork_data = await artwork.read()
+
+        os.makedirs(settings.artwork_dir, exist_ok=True)
+        artwork_path = os.path.join(settings.artwork_dir, f"{feed.id}.jpg")
+
+        # Validate and process artwork (converts to JPEG)
+        success, error_msg = validate_and_process_artwork(artwork_data, artwork_path)
+        if not success:
+            raise HTTPException(status_code=400, detail=error_msg)
+
+        # Remove old artwork if exists and different path
         if feed.artwork_path and feed.artwork_path != artwork_path:
             if os.path.exists(feed.artwork_path):
                 os.remove(feed.artwork_path)
-
-        with open(artwork_path, "wb") as f:
-            shutil.copyfileobj(artwork.file, f)
 
         feed.artwork_path = artwork_path
 

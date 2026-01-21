@@ -75,9 +75,8 @@ def verify_audio_file(file_path: str) -> tuple[bool, str]:
         return False, "Audio validation timed out"
     except FileNotFoundError:
         logger.error("ffprobe not found - ensure ffmpeg is installed")
-        # If ffprobe is not available, allow the file (fail open for compatibility)
-        # This is a trade-off; in production ffprobe should always be available
-        return True, ""
+        # Fail closed: reject the file if we can't verify it
+        return False, "Audio validation unavailable - ffprobe not installed"
     except Exception as e:
         logger.error(f"ffprobe validation error: {e}")
         return False, "Failed to validate audio file"
