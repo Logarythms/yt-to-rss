@@ -3,6 +3,8 @@ import logging
 from PIL import Image
 from io import BytesIO
 
+from app.services.image_utils import letterbox_to_square
+
 logger = logging.getLogger(__name__)
 
 ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
@@ -64,6 +66,9 @@ def process_thumbnail(
         if img.width > max_dimension or img.height > max_dimension:
             img.thumbnail((max_dimension, max_dimension), Image.Resampling.LANCZOS)
             logger.info(f"Resized thumbnail to {img.width}x{img.height}")
+
+        # Letterbox to square aspect ratio
+        img = letterbox_to_square(img)
 
         # Save as JPEG
         img.save(output_path, 'JPEG', quality=THUMBNAIL_QUALITY, optimize=True)

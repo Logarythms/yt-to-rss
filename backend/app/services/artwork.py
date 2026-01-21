@@ -3,6 +3,8 @@ import logging
 from io import BytesIO
 from PIL import Image
 
+from app.services.image_utils import letterbox_to_square
+
 logger = logging.getLogger(__name__)
 
 ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
@@ -73,6 +75,9 @@ def validate_and_process_artwork(
             img = background
         elif img.mode != 'RGB':
             img = img.convert('RGB')
+
+        # Letterbox to square aspect ratio
+        img = letterbox_to_square(img)
 
         # Save as JPEG
         img.save(output_path, 'JPEG', quality=OUTPUT_QUALITY, optimize=True)

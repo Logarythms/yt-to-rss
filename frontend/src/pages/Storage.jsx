@@ -32,6 +32,23 @@ export default function Storage() {
   const [storage, setStorage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [migrationLoading, setMigrationLoading] = useState(false);
+  const [migrationResult, setMigrationResult] = useState(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const handleMigration = async (dryRun = false) => {
+    setMigrationLoading(true);
+    setMigrationResult(null);
+    try {
+      const result = await api.migrateImages(dryRun);
+      setMigrationResult({ ...result, dryRun });
+    } catch (err) {
+      setMigrationResult({ error: err.message || 'Migration failed' });
+    } finally {
+      setMigrationLoading(false);
+      setShowConfirm(false);
+    }
+  };
 
   useEffect(() => {
     const loadStorage = async () => {
@@ -149,6 +166,89 @@ export default function Storage() {
               ))}
           </div>
         )}
+      </div>
+
+      {/* Maintenance */}
+      <div className="mt-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h2 className="text-lg font-medium text-gray-900 mb-4">Maintenance</h2>
+
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm text-gray-600 mb-3">
+              Make all feed artwork and episode thumbnails square (1:1 aspect ratio) by adding black letterboxing.
+              This improves compatibility with podcast apps.
+            </p>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleMigration(true)}
+                disabled={migrationLoading}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+              >
+                {migrationLoading ? 'Checking...' : 'Preview'}
+              </button>
+
+              {showConfirm ? (
+                <>
+                  <button
+                    onClick={() => handleMigration(false)}
+                    disabled={migrationLoading}
+                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    onClick={() => setShowConfirm(false)}
+                    disabled={migrationLoading}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setShowConfirm(true)}
+                  disabled={migrationLoading}
+                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  Make Images Square
+                </button>
+              )}
+            </div>
+          </div>
+
+          {migrationResult && (
+            <div className={`p-4 rounded-md ${migrationResult.error ? 'bg-red-50' : 'bg-gray-50'}`}>
+              {migrationResult.error ? (
+                <p className="text-sm text-red-700">{migrationResult.error}</p>
+              ) : (
+                <div className="text-sm">
+                  <p className="font-medium text-gray-900 mb-2">
+                    {migrationResult.dryRun ? 'Preview Results' : 'Migration Complete'}
+                  </p>
+                  <ul className="space-y-1 text-gray-600">
+                    <li>Total images: {migrationResult.total_images}</li>
+                    <li className="text-green-600">
+                      {migrationResult.dryRun ? 'Would process' : 'Processed'}: {migrationResult.processed}
+                    </li>
+                    <li>Already square (skipped): {migrationResult.skipped}</li>
+                    {migrationResult.failed > 0 && (
+                      <li className="text-red-600">Failed: {migrationResult.failed}</li>
+                    )}
+                  </ul>
+                  {migrationResult.errors?.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-gray-200">
+                      <p className="text-xs text-red-600">
+                        Errors: {migrationResult.errors.slice(0, 5).join(', ')}
+                        {migrationResult.errors.length > 5 && ` and ${migrationResult.errors.length - 5} more`}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

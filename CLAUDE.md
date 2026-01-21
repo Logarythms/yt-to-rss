@@ -38,14 +38,16 @@ The nginx config (`frontend/nginx.conf`) defines two server blocks to separate p
 | `schemas.py` | Pydantic request/response schemas |
 | `auth.py` | Password verification, JWT creation/validation with iss/aud claims |
 | `limiter.py` | Rate limiter instance (slowapi) |
+| `routers/admin.py` | Admin endpoints: image migration |
 | `routers/auth.py` | Login endpoint with rate limiting |
 | `routers/feeds.py` | Feed CRUD, episode management, audio upload, storage info |
 | `routers/rss.py` | Public endpoints: RSS XML, audio files, artwork, thumbnails (with path validation) |
 | `services/youtube.py` | yt-dlp wrapper for metadata and playlist extraction |
 | `services/audio.py` | Audio download and conversion to MP3 |
 | `services/audio_converter.py` | Audio file validation (ffprobe), metadata extraction, MP3 conversion |
-| `services/artwork.py` | Artwork validation and processing (PIL) |
-| `services/thumbnail.py` | Thumbnail validation and processing (PIL) |
+| `services/artwork.py` | Artwork validation, processing, and letterboxing (PIL) |
+| `services/thumbnail.py` | Thumbnail validation, processing, and letterboxing (PIL) |
+| `services/image_utils.py` | Shared image utilities (letterbox_to_square) |
 | `services/rss_generator.py` | feedgen-based RSS XML generation |
 | `tasks/download.py` | Celery task for downloading YouTube episodes + thumbnail caching |
 | `tasks/convert.py` | Celery task for converting uploaded audio files |
@@ -135,6 +137,7 @@ Edit `services/rss_generator.py`. Uses the `feedgen` library with podcast extens
 - Path traversal prevention: `validate_file_path()` in `routers/rss.py` ensures files are within allowed directories
 - SSRF prevention: Thumbnail proxy only allows `i.ytimg.com`, `i9.ytimg.com`, `img.youtube.com`
 - Artwork/thumbnail validation: PIL verifies images are valid before saving
+- Automatic letterboxing: All images are made square (1:1) with black bars for podcast app compatibility
 - Audio validation: ffprobe verifies files contain audio streams (fail-closed)
 
 ### Background Tasks

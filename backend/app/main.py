@@ -9,7 +9,7 @@ from slowapi.errors import RateLimitExceeded
 from app.database import init_db
 from app.config import get_settings
 from app.limiter import limiter
-from app.routers import auth, feeds, rss
+from app.routers import admin, auth, feeds, rss
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -92,6 +92,7 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(admin.router)
 app.include_router(auth.router)
 app.include_router(feeds.router)
 app.include_router(rss.router)

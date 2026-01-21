@@ -163,4 +163,10 @@ export const api = {
 
   // Storage
   getStorage: () => request('/feeds/storage/info'),
+
+  // Admin
+  migrateImages: (dryRun = false) => request('/admin/migrate-images', {
+    method: 'POST',
+    body: JSON.stringify({ dry_run: dryRun }),
+  }),
 };

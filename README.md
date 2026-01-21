@@ -8,6 +8,7 @@ A self-hosted web application that creates podcast RSS feeds from YouTube videos
 - **Upload custom audio** - add your own MP3, M4A, WAV, FLAC, or OGG files
 - **Automatic audio extraction** - downloads and converts to MP3
 - **Custom metadata** - set feed name, author, description, and artwork
+- **Automatic square images** - artwork and thumbnails are automatically letterboxed to 1:1 aspect ratio
 - **Editable episodes** - customize episode title, description, and publish date
 - **Valid podcast RSS** - compatible with all major podcast apps
 - **Background processing** - videos download asynchronously via Celery workers
@@ -125,6 +126,13 @@ Monitor disk usage at `http://localhost:3000/storage`:
 - Total disk usage and free space
 - Per-feed storage breakdown
 - Episode counts
+
+### Maintenance
+
+The Storage page includes maintenance tools:
+- **Make Images Square** - retroactively apply letterboxing to existing artwork and thumbnails
+  - Use "Preview" to see how many images would be processed
+  - Already-square images are skipped automatically
 
 ## Security
 
