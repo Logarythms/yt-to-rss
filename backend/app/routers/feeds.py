@@ -498,19 +498,21 @@ async def update_episode(
     if not episode:
         raise HTTPException(status_code=404, detail="Episode not found")
 
-    if request.published_at is None:
-        # Revert to original date
-        episode.published_at = episode.original_published_at or episode.created_at
-    else:
-        # Validate date range: reject dates before 2005 (YouTube launch) or more than 1 year in future
-        min_date = datetime(2005, 1, 1, tzinfo=timezone.utc)
-        now = datetime.now(timezone.utc)
-        max_date = now.replace(year=now.year + 1)
-        if request.published_at < min_date:
-            raise HTTPException(status_code=400, detail="Date cannot be before 2005")
-        if request.published_at > max_date:
-            raise HTTPException(status_code=400, detail="Date cannot be more than 1 year in the future")
-        episode.published_at = request.published_at
+    # Handle published_at update (only if explicitly provided in request)
+    if 'published_at' in request.model_fields_set:
+        if request.published_at is None:
+            # Revert to original date
+            episode.published_at = episode.original_published_at or episode.created_at
+        else:
+            # Validate date range: reject dates before 2005 (YouTube launch) or more than 1 year in future
+            min_date = datetime(2005, 1, 1, tzinfo=timezone.utc)
+            now = datetime.now(timezone.utc)
+            max_date = now.replace(year=now.year + 1)
+            if request.published_at < min_date:
+                raise HTTPException(status_code=400, detail="Date cannot be before 2005")
+            if request.published_at > max_date:
+                raise HTTPException(status_code=400, detail="Date cannot be more than 1 year in the future")
+            episode.published_at = request.published_at
 
     # Handle title update (None = no change, empty string = revert to original)
     if request.title is not None:

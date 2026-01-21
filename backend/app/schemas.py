@@ -94,9 +94,10 @@ class AddVideosResponse(BaseModel):
 
 
 class EpisodeUpdate(BaseModel):
-    # Note: published_at uses None for revert (legacy behavior)
-    # title/description use empty string for revert (allows partial updates via None = no change)
-    published_at: Optional[datetime] = None  # None = revert to original
+    # All fields use None = no change when not provided in request
+    # published_at: explicit null in JSON = revert to original
+    # title/description: empty string = revert to original
+    published_at: Optional[datetime] = None  # omit = no change, null = revert
     title: Optional[str] = Field(None, max_length=500)  # None = no change, "" = revert
     description: Optional[str] = None  # None = no change, "" = revert
 
