@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from app.models import EpisodeStatus, EpisodeSource
 
 
@@ -69,6 +69,37 @@ class EpisodeResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class PlaylistSourceResponse(BaseModel):
+    id: str
+    feed_id: str
+    playlist_url: str
+    playlist_id: str
+    name: Optional[str]
+    last_refreshed_at: Optional[datetime]
+    refresh_interval_override: Optional[int]
+    enabled: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+    @field_validator("enabled", mode="before")
+    @classmethod
+    def parse_enabled(cls, v):
+        if isinstance(v, str):
+            return v.lower() == "true"
+        return bool(v)
+
+
+class PlaylistSourceUpdate(BaseModel):
+    enabled: Optional[bool] = None
+    refresh_interval_override: Optional[int] = None
+
+
+class RefreshResponse(BaseModel):
+    refreshed_playlists: int
+    new_episodes_added: int
+
+
 class FeedDetailResponse(BaseModel):
     id: str
     name: str
@@ -80,6 +111,7 @@ class FeedDetailResponse(BaseModel):
     rss_url: str
     total_size: int = 0  # bytes
     episodes: list[EpisodeResponse]
+    playlist_sources: list[PlaylistSourceResponse] = []
 
     model_config = {"from_attributes": True}
 
@@ -91,6 +123,7 @@ class AddVideosRequest(BaseModel):
 class AddVideosResponse(BaseModel):
     added_count: int
     episodes: list[EpisodeResponse]
+    playlist_sources_created: int = 0
 
 
 class EpisodeUpdate(BaseModel):

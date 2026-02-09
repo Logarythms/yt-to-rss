@@ -34,6 +34,7 @@ class Feed(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     episodes = relationship("Episode", back_populates="feed", cascade="all, delete-orphan")
+    playlist_sources = relationship("PlaylistSource", back_populates="feed", cascade="all, delete-orphan")
 
 
 class Episode(Base):
@@ -61,3 +62,19 @@ class Episode(Base):
     thumbnail_path = Column(String(500), nullable=True)  # Local episode thumbnail
 
     feed = relationship("Feed", back_populates="episodes")
+
+
+class PlaylistSource(Base):
+    __tablename__ = "playlist_sources"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    feed_id = Column(String(36), ForeignKey("feeds.id"), nullable=False)
+    playlist_url = Column(String(500), nullable=False)
+    playlist_id = Column(String(100), nullable=False)
+    name = Column(String(500), nullable=True)
+    last_refreshed_at = Column(DateTime, nullable=True)
+    refresh_interval_override = Column(Integer, nullable=True)  # seconds, null = use global default
+    enabled = Column(String(5), default="true")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    feed = relationship("Feed", back_populates="playlist_sources")

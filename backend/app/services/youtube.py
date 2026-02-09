@@ -75,6 +75,28 @@ def get_video_info(url_or_id: str) -> VideoInfo:
         )
 
 
+def extract_playlist_id(url: str) -> Optional[str]:
+    """Extract YouTube playlist ID from a URL."""
+    match = re.search(r'[?&]list=([a-zA-Z0-9_-]+)', url)
+    return match.group(1) if match else None
+
+
+def get_playlist_info(url: str) -> dict:
+    """Get playlist metadata (title)."""
+    ydl_opts = {
+        'quiet': True,
+        'no_warnings': True,
+        'extract_flat': True,
+        'playlistend': 1,
+    }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+        return {
+            'title': info.get('title', 'Unknown Playlist'),
+            'id': info.get('id', ''),
+        }
+
+
 def get_playlist_video_ids(url: str) -> list[str]:
     """Extract all video IDs from a playlist."""
     ydl_opts = {
@@ -124,3 +146,45 @@ def extract_video_ids_from_urls(urls: list[str]) -> list[str]:
             continue
 
     return video_ids
+
+
+@dataclass
+class ExtractedUrls:
+    video_ids: list[str]
+    playlist_urls: list[tuple[str, str]]  # (url, playlist_id) pairs
+
+
+def extract_video_ids_and_playlists(urls: list[str]) -> ExtractedUrls:
+    """Extract video IDs and detect playlist URLs for tracking.
+
+    Returns both the expanded video IDs and the original playlist URLs.
+    """
+    video_ids = []
+    playlist_urls = []
+    seen = set()
+
+    for url in urls:
+        url = url.strip()
+        if not url:
+            continue
+
+        try:
+            if is_playlist_url(url):
+                playlist_id = extract_playlist_id(url)
+                if playlist_id:
+                    playlist_urls.append((url, playlist_id))
+                ids = get_playlist_video_ids(url)
+                for vid in ids:
+                    if vid not in seen:
+                        seen.add(vid)
+                        video_ids.append(vid)
+            else:
+                vid = extract_video_id(url)
+                if vid and vid not in seen:
+                    seen.add(vid)
+                    video_ids.append(vid)
+        except Exception as e:
+            logger.error(f"Error processing URL {url}: {e}")
+            continue
+
+    return ExtractedUrls(video_ids=video_ids, playlist_urls=playlist_urls)

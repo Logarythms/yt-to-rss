@@ -5,6 +5,7 @@ A self-hosted web application that creates podcast RSS feeds from YouTube videos
 ## Features
 
 - **Create podcast feeds** from YouTube videos and playlists
+- **Automatic playlist refresh** - tracked playlists are periodically checked for new videos
 - **Upload custom audio** - add your own MP3, M4A, WAV, FLAC, or OGG files
 - **Automatic audio extraction** - downloads and converts to MP3
 - **Custom metadata** - set feed name, author, description, and artwork
@@ -22,6 +23,7 @@ A self-hosted web application that creates podcast RSS feeds from YouTube videos
 | **backend** | FastAPI application (API + RSS serving) |
 | **frontend** | React/Vite app served via nginx |
 | **worker** | Celery worker for background video processing |
+| **beat** | Celery Beat scheduler for periodic playlist refresh |
 | **redis** | Message broker for task queue |
 
 ## Quick Start
@@ -64,6 +66,9 @@ Edit `.env` or set environment variables:
 | `SECRET_KEY` | JWT signing key (32+ chars recommended) | **Required** |
 | `BASE_URL` | Public URL for RSS feed links | `http://localhost:8080` |
 | `ADMIN_ORIGIN` | Admin UI origin for CORS | `http://localhost:3000` |
+| `PLAYLIST_REFRESH_INTERVAL` | Default seconds between playlist refreshes | `3600` (1 hour) |
+| `PLAYLIST_REFRESH_CHECK_INTERVAL` | How often the scheduler checks for due playlists | `300` (5 min) |
+| `MAX_NEW_EPISODES_PER_REFRESH` | Max new episodes added per playlist refresh | `50` |
 
 > **Security Note:** `APP_PASSWORD` and `SECRET_KEY` have no defaults. The app will fail to start if they are not set or if they match the old default values (`changeme` / `your-secret-key-change-in-production`).
 
@@ -94,6 +99,7 @@ Edit `.env` or set environment variables:
    - Playlists: `https://www.youtube.com/playlist?list=...`
    - Short URLs: `https://youtu.be/...`
 4. Videos will download in the background
+5. Playlists are automatically tracked for future refresh
 
 ### Uploading Audio Files
 
@@ -110,6 +116,16 @@ Edit `.env` or set environment variables:
 3. Modify the title and/or description
 4. Click "Save" to apply changes
 5. Use "Clear" to revert a field to its original value (from YouTube or upload)
+
+### Playlist Auto-Refresh
+
+When you add a YouTube playlist, it is automatically tracked. New videos added to the playlist on YouTube will be detected and downloaded automatically.
+
+- Playlists are checked on a configurable interval (default: every hour)
+- Use the "Refresh Now" button on a feed's edit page to check immediately
+- Tracked playlists can be enabled/disabled or removed without deleting episodes
+- Configure `PLAYLIST_REFRESH_INTERVAL` to change the default check frequency
+- Per-playlist interval overrides are supported via the API
 
 ### Subscribing to Feeds
 
@@ -187,7 +203,7 @@ yt-to-rss/
 │       ├── main.py              # FastAPI entry point
 │       ├── config.py            # Settings
 │       ├── database.py          # SQLAlchemy + migrations
-│       ├── models.py            # Feed, Episode models
+│       ├── models.py            # Feed, Episode, PlaylistSource models
 │       ├── schemas.py           # Pydantic schemas
 │       ├── auth.py              # JWT authentication
 │       ├── routers/             # API endpoints

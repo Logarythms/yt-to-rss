@@ -161,6 +161,20 @@ export const api = {
     });
   },
 
+  // Playlist Sources
+  refreshFeed: (feedId) => request(`/feeds/${feedId}/refresh`, {
+    method: 'POST',
+  }),
+
+  removePlaylistSource: (feedId, sourceId) => request(`/feeds/${feedId}/playlist-sources/${sourceId}`, {
+    method: 'DELETE',
+  }),
+
+  updatePlaylistSource: (feedId, sourceId, data) => request(`/feeds/${feedId}/playlist-sources/${sourceId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }),
+
   // Storage
   getStorage: () => request('/feeds/storage/info'),
 

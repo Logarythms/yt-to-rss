@@ -16,6 +16,7 @@ yt-to-rss is a self-hosted web application that converts YouTube videos into pod
 - **backend** (port 8000 internal): FastAPI app handling API requests and serving RSS/audio
 - **frontend** (ports 80/3000 internal → 8080/3000 external): React SPA + nginx reverse proxy
 - **worker**: Celery worker processing video downloads
+- **beat**: Celery Beat scheduler for periodic playlist refresh
 - **redis**: Message broker for Celery
 
 ### Port Mapping
@@ -34,13 +35,13 @@ The nginx config (`frontend/nginx.conf`) defines two server blocks to separate p
 | `main.py` | FastAPI app, CORS, router includes, startup validation, rate limiter setup |
 | `config.py` | Pydantic settings from environment variables |
 | `database.py` | SQLAlchemy engine, sessions, `init_db()` with migrations |
-| `models.py` | SQLAlchemy models: `Feed`, `Episode` |
+| `models.py` | SQLAlchemy models: `Feed`, `Episode`, `PlaylistSource` |
 | `schemas.py` | Pydantic request/response schemas |
 | `auth.py` | Password verification, JWT creation/validation with iss/aud claims |
 | `limiter.py` | Rate limiter instance (slowapi) |
 | `routers/admin.py` | Admin endpoints: image migration |
 | `routers/auth.py` | Login endpoint with rate limiting |
-| `routers/feeds.py` | Feed CRUD, episode management, audio upload, storage info |
+| `routers/feeds.py` | Feed CRUD, episode management, audio upload, playlist source management, storage info |
 | `routers/rss.py` | Public endpoints: RSS XML, audio files, artwork, thumbnails (with path validation) |
 | `services/youtube.py` | yt-dlp wrapper for metadata and playlist extraction |
 | `services/audio.py` | Audio download and conversion to MP3 |
@@ -51,7 +52,8 @@ The nginx config (`frontend/nginx.conf`) defines two server blocks to separate p
 | `services/rss_generator.py` | feedgen-based RSS XML generation |
 | `tasks/download.py` | Celery task for downloading YouTube episodes + thumbnail caching |
 | `tasks/convert.py` | Celery task for converting uploaded audio files |
-| `celery_app.py` | Celery configuration |
+| `tasks/refresh.py` | Celery tasks for playlist refresh (periodic check + per-playlist refresh) |
+| `celery_app.py` | Celery configuration + Beat schedule |
 
 ### Frontend (`frontend/src/`)
 
@@ -65,6 +67,7 @@ The nginx config (`frontend/nginx.conf`) defines two server blocks to separate p
 | `components/FeedList.jsx` | Feed grid display |
 | `components/EpisodeList.jsx` | Episode list with actions (delete, retry, edit title/description) |
 | `components/AddVideosModal.jsx` | URL input modal |
+| `components/PlaylistSources.jsx` | Tracked playlist list with enable/disable/remove |
 | `pages/Home.jsx` | Feed listing page |
 | `pages/CreateFeed.jsx` | New feed page |
 | `pages/EditFeed.jsx` | Feed detail/edit page |
@@ -99,6 +102,17 @@ The nginx config (`frontend/nginx.conf`) defines two server blocks to separate p
 - `error_message` (text, nullable)
 - `source_type` (enum: youtube, upload) - default 'youtube'
 - `original_filename` (string, nullable) - for uploaded files
+- `created_at` (datetime)
+
+### PlaylistSource
+- `id` (UUID, PK)
+- `feed_id` (FK → Feed)
+- `playlist_url` (string) - full YouTube playlist URL
+- `playlist_id` (string) - YouTube playlist ID for deduplication
+- `name` (string, nullable) - playlist title from YouTube
+- `last_refreshed_at` (datetime, nullable)
+- `refresh_interval_override` (int, nullable) - per-playlist override in seconds
+- `enabled` (string, default "true")
 - `created_at` (datetime)
 
 ## Common Tasks
@@ -143,6 +157,7 @@ Edit `services/rss_generator.py`. Uses the `feedgen` library with podcast extens
 ### Background Tasks
 - Episode downloads run as Celery tasks (`tasks/download.py`)
 - Large file uploads (>100MB) processed in background (`tasks/convert.py`)
+- Playlist refresh runs via Celery Beat (`tasks/refresh.py`): periodic `check_playlist_refreshes` finds due playlists, `refresh_playlist` handles each one
 - Frontend polls every 5 seconds to update episode status
 - Failed tasks can be retried via API
 - Error messages sanitized (full error logged, generic message shown to user)
@@ -166,6 +181,9 @@ Edit `services/rss_generator.py`. Uses the `feedgen` library with podcast extens
 | `AUDIO_DIR` | backend | Audio file storage | No |
 | `ARTWORK_DIR` | backend | Feed artwork storage | No |
 | `THUMBNAIL_DIR` | backend | Cached thumbnail storage | No |
+| `PLAYLIST_REFRESH_INTERVAL` | worker, beat | Default seconds between playlist refreshes | No (default: `3600`) |
+| `PLAYLIST_REFRESH_CHECK_INTERVAL` | beat | How often Beat checks for due playlists (seconds) | No (default: `300`) |
+| `MAX_NEW_EPISODES_PER_REFRESH` | worker | Max new episodes per playlist refresh | No (default: `50`) |
 
 ## Build Commands
 
@@ -177,10 +195,10 @@ docker-compose build --no-cache
 docker-compose build --no-cache backend
 
 # View logs
-docker-compose logs -f backend worker
+docker-compose logs -f backend worker beat
 
 # Restart services
-docker-compose restart backend worker
+docker-compose restart backend worker beat
 ```
 
 ## Known Limitations

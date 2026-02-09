@@ -36,6 +36,33 @@ services:
       AUDIO_DIR: ./data/audio
       ARTWORK_DIR: ./data/artwork
       THUMBNAIL_DIR: ./data/thumbnails
+      PLAYLIST_REFRESH_INTERVAL: ${PLAYLIST_REFRESH_INTERVAL:-3600}
+      MAX_NEW_EPISODES_PER_REFRESH: ${MAX_NEW_EPISODES_PER_REFRESH:-50}
+    volumes:
+      - backend_data:/app/data
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A app.celery_app beat --loglevel=info
+    environment:
+      BASE_URL: ${BASE_URL:-http://localhost:8080}
+      ADMIN_ORIGIN: ${ADMIN_ORIGIN:-http://localhost:3000}
+      APP_PASSWORD: ${APP_PASSWORD}
+      SECRET_KEY: ${SECRET_KEY}
+      DATABASE_URL: sqlite:///./data/db.sqlite
+      REDIS_URL: redis://redis:6379/0
+      DATA_DIR: ./data
+      AUDIO_DIR: ./data/audio
+      ARTWORK_DIR: ./data/artwork
+      THUMBNAIL_DIR: ./data/thumbnails
+      PLAYLIST_REFRESH_INTERVAL: ${PLAYLIST_REFRESH_INTERVAL:-3600}
+      PLAYLIST_REFRESH_CHECK_INTERVAL: ${PLAYLIST_REFRESH_CHECK_INTERVAL:-300}
+      MAX_NEW_EPISODES_PER_REFRESH: ${MAX_NEW_EPISODES_PER_REFRESH:-50}
     volumes:
       - backend_data:/app/data
     depends_on:

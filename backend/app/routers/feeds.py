@@ -7,16 +7,16 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from sqlalchemy.orm import Session
 from typing import Optional
 from app.database import get_db
-from app.models import Feed, Episode, EpisodeStatus, EpisodeSource
+from app.models import Feed, Episode, EpisodeStatus, EpisodeSource, PlaylistSource
 from sqlalchemy import func
 from app.schemas import (
     FeedCreate, FeedUpdate, FeedResponse, FeedListResponse,
     FeedDetailResponse, EpisodeResponse, EpisodeUpdate, AddVideosRequest, AddVideosResponse,
-    StorageResponse, FeedStorageInfo
+    StorageResponse, FeedStorageInfo, PlaylistSourceResponse, PlaylistSourceUpdate, RefreshResponse
 )
 from app.auth import get_current_user
 from app.config import get_settings
-from app.services.youtube import extract_video_ids_from_urls, get_video_info
+from app.services.youtube import extract_video_ids_and_playlists, get_video_info, get_playlist_info
 from app.services.audio_converter import (
     validate_audio_file, extract_metadata, convert_to_mp3, is_mp3, verify_audio_file,
     MAX_FILE_SIZE, LARGE_FILE_THRESHOLD
@@ -127,6 +127,14 @@ async def get_feed(
     total_size = db.query(func.coalesce(func.sum(Episode.file_size), 0)).filter(
         Episode.feed_id == feed_id
     ).scalar() or 0
+
+    playlist_sources = (
+        db.query(PlaylistSource)
+        .filter(PlaylistSource.feed_id == feed_id)
+        .order_by(PlaylistSource.created_at.desc())
+        .all()
+    )
+
     return FeedDetailResponse(
         id=feed.id,
         name=feed.name,
@@ -138,6 +146,7 @@ async def get_feed(
         rss_url=f"{base_url}/rss/{feed.id}",
         total_size=total_size,
         episodes=[EpisodeResponse.model_validate(e) for e in episodes],
+        playlist_sources=[PlaylistSourceResponse.model_validate(ps) for ps in playlist_sources],
     )
 
 
@@ -235,11 +244,38 @@ async def add_videos(
     if not feed:
         raise HTTPException(status_code=404, detail="Feed not found")
 
-    # Extract video IDs from URLs
-    video_ids = extract_video_ids_from_urls(request.urls)
+    # Extract video IDs and detect playlist URLs
+    result = extract_video_ids_and_playlists(request.urls)
+    video_ids = result.video_ids
 
     if not video_ids:
         raise HTTPException(status_code=400, detail="No valid video URLs found")
+
+    # Create PlaylistSource records for detected playlists
+    playlist_sources_created = 0
+    for playlist_url, playlist_id in result.playlist_urls:
+        existing = db.query(PlaylistSource).filter(
+            PlaylistSource.feed_id == feed_id,
+            PlaylistSource.playlist_id == playlist_id,
+        ).first()
+
+        if not existing:
+            try:
+                pl_info = get_playlist_info(playlist_url)
+                pl_name = pl_info.get('title')
+            except Exception:
+                pl_name = None
+
+            source = PlaylistSource(
+                feed_id=feed_id,
+                playlist_url=playlist_url,
+                playlist_id=playlist_id,
+                name=pl_name,
+                last_refreshed_at=datetime.utcnow(),
+                enabled="true",
+            )
+            db.add(source)
+            playlist_sources_created += 1
 
     # Check for existing episodes
     existing_ids = {
@@ -276,6 +312,7 @@ async def add_videos(
     return AddVideosResponse(
         added_count=len(new_episodes),
         episodes=[EpisodeResponse.model_validate(e) for e in new_episodes],
+        playlist_sources_created=playlist_sources_created,
     )
 
 
@@ -553,6 +590,81 @@ async def retry_episode(
     download_episode.delay(episode.id)
 
     return {"queued": True}
+
+
+@router.post("/{feed_id}/refresh", response_model=RefreshResponse)
+async def refresh_feed_playlists(
+    feed_id: str,
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    """Manually trigger refresh for all enabled playlists in this feed."""
+    feed = db.query(Feed).filter(Feed.id == feed_id).first()
+    if not feed:
+        raise HTTPException(status_code=404, detail="Feed not found")
+
+    sources = db.query(PlaylistSource).filter(
+        PlaylistSource.feed_id == feed_id,
+        PlaylistSource.enabled == "true",
+    ).all()
+
+    if not sources:
+        raise HTTPException(status_code=400, detail="No enabled playlist sources to refresh")
+
+    from app.tasks.refresh import refresh_playlist
+    for source in sources:
+        refresh_playlist.delay(source.id)
+
+    return RefreshResponse(
+        refreshed_playlists=len(sources),
+        new_episodes_added=0,  # Unknown since tasks are async
+    )
+
+
+@router.delete("/{feed_id}/playlist-sources/{source_id}")
+async def remove_playlist_source(
+    feed_id: str,
+    source_id: str,
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    """Remove a tracked playlist (does not delete its episodes)."""
+    source = db.query(PlaylistSource).filter(
+        PlaylistSource.id == source_id,
+        PlaylistSource.feed_id == feed_id,
+    ).first()
+    if not source:
+        raise HTTPException(status_code=404, detail="Playlist source not found")
+
+    db.delete(source)
+    db.commit()
+    return {"deleted": True}
+
+
+@router.patch("/{feed_id}/playlist-sources/{source_id}", response_model=PlaylistSourceResponse)
+async def update_playlist_source(
+    feed_id: str,
+    source_id: str,
+    request: PlaylistSourceUpdate,
+    db: Session = Depends(get_db),
+    user: str = Depends(get_current_user),
+):
+    """Update playlist source settings (enable/disable, change refresh interval)."""
+    source = db.query(PlaylistSource).filter(
+        PlaylistSource.id == source_id,
+        PlaylistSource.feed_id == feed_id,
+    ).first()
+    if not source:
+        raise HTTPException(status_code=404, detail="Playlist source not found")
+
+    if request.enabled is not None:
+        source.enabled = "true" if request.enabled else "false"
+    if 'refresh_interval_override' in request.model_fields_set:
+        source.refresh_interval_override = request.refresh_interval_override
+
+    db.commit()
+    db.refresh(source)
+    return PlaylistSourceResponse.model_validate(source)
 
 
 @router.get("/storage/info", response_model=StorageResponse)

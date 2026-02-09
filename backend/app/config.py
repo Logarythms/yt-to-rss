@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     artwork_dir: str = "./data/artwork"
     thumbnail_dir: str = "./data/thumbnails"
 
+    # Playlist refresh settings
+    playlist_refresh_interval: int = 3600  # Default seconds between playlist refreshes
+    playlist_refresh_check_interval: int = 300  # How often Beat checks for due playlists (seconds)
+    max_new_episodes_per_refresh: int = 50  # Max new episodes added per playlist refresh
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 

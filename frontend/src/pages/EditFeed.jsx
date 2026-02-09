@@ -5,6 +5,7 @@ import FeedForm from '../components/FeedForm';
 import EpisodeList from '../components/EpisodeList';
 import AddVideosModal from '../components/AddVideosModal';
 import UploadAudioModal from '../components/UploadAudioModal';
+import PlaylistSources from '../components/PlaylistSources';
 
 export default function EditFeed() {
   const { id } = useParams();
@@ -15,6 +16,7 @@ export default function EditFeed() {
   const [showAddVideos, setShowAddVideos] = useState(false);
   const [showUploadAudio, setShowUploadAudio] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadFeed = useCallback(async () => {
     try {
@@ -55,6 +57,18 @@ export default function EditFeed() {
     } catch (err) {
       alert(err.message || 'Failed to delete feed');
       setDeleting(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await api.refreshFeed(id);
+      await loadFeed();
+    } catch (err) {
+      alert(err.message || 'Failed to refresh playlists');
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -152,6 +166,32 @@ export default function EditFeed() {
           submitLabel="Save Changes"
         />
       </div>
+
+      {/* Tracked Playlists */}
+      {feed.playlist_sources && feed.playlist_sources.length > 0 && (
+        <div className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-medium text-gray-900">
+              Tracked Playlists
+              <span className="ml-2 text-sm font-normal text-gray-500">
+                ({feed.playlist_sources.length})
+              </span>
+            </h2>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+            >
+              {refreshing ? 'Refreshing...' : 'Refresh Now'}
+            </button>
+          </div>
+          <PlaylistSources
+            feedId={id}
+            sources={feed.playlist_sources}
+            onUpdate={loadFeed}
+          />
+        </div>
+      )}
 
       {/* Episodes */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
