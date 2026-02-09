@@ -190,7 +190,7 @@ Edit `services/rss_generator.py`. Uses the `feedgen` library with podcast extens
 | `AUDIO_DIR` | backend | Audio file storage | No |
 | `ARTWORK_DIR` | backend | Feed artwork storage | No |
 | `THUMBNAIL_DIR` | backend | Cached thumbnail storage | No |
-| `PLAYLIST_REFRESH_INTERVAL` | worker, beat | Default seconds between playlist refreshes | No (default: `3600`) |
+| `PLAYLIST_REFRESH_INTERVAL` | worker, beat | Default seconds between playlist refreshes | No (default: `86400`) |
 | `PLAYLIST_REFRESH_CHECK_INTERVAL` | beat | How often Beat checks for due playlists (seconds) | No (default: `300`) |
 | `MAX_NEW_EPISODES_PER_REFRESH` | worker | Max new episodes per playlist refresh | No (default: `50`) |
 

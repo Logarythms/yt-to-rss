@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     thumbnail_dir: str = "./data/thumbnails"
 
     # Playlist refresh settings
-    playlist_refresh_interval: int = 3600  # Default seconds between playlist refreshes
+    playlist_refresh_interval: int = 86400  # Default seconds between playlist refreshes (24 hours)
     playlist_refresh_check_interval: int = 300  # How often Beat checks for due playlists (seconds)
     max_new_episodes_per_refresh: int = 50  # Max new episodes added per playlist refresh
 

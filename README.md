@@ -67,7 +67,7 @@ Edit `.env` or set environment variables:
 | `SECRET_KEY` | JWT signing key (32+ chars recommended) | **Required** |
 | `BASE_URL` | Public URL for RSS feed links | `http://localhost:8080` |
 | `ADMIN_ORIGIN` | Admin UI origin for CORS | `http://localhost:3000` |
-| `PLAYLIST_REFRESH_INTERVAL` | Default seconds between playlist refreshes | `3600` (1 hour) |
+| `PLAYLIST_REFRESH_INTERVAL` | Default seconds between playlist refreshes | `86400` (24 hours) |
 | `PLAYLIST_REFRESH_CHECK_INTERVAL` | How often the scheduler checks for due playlists | `300` (5 min) |
 | `MAX_NEW_EPISODES_PER_REFRESH` | Max new episodes added per playlist refresh | `50` |
 
@@ -122,7 +122,7 @@ Edit `.env` or set environment variables:
 
 When you add a YouTube playlist, it is automatically tracked. New videos added to the playlist on YouTube will be detected and downloaded automatically.
 
-- Playlists are checked on a configurable interval (default: every hour)
+- Playlists are checked on a configurable interval (default: every 24 hours)
 - Use the "Refresh Now" button on a feed's edit page to check immediately
 - Tracked playlists can be enabled/disabled or removed without deleting episodes
 - Configure `PLAYLIST_REFRESH_INTERVAL` to change the default check frequency
