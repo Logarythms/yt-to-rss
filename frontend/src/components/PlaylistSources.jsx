@@ -95,6 +95,7 @@ export default function PlaylistSources({ feedId, sources, onUpdate }) {
             </p>
           </div>
           <div className="flex items-center gap-2 ml-4">
+            <label className="text-xs text-gray-500">Refresh Interval:</label>
             <select
               value={source.refresh_interval_override || ''}
               onChange={(e) => handleIntervalChange(source, e.target.value)}
