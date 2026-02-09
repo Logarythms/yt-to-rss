@@ -100,7 +100,7 @@ export default function EditFeed() {
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="text-gray-500">Loading feed...</div>
+        <div className="text-gray-500 dark:text-gray-400">Loading feed...</div>
       </div>
     );
   }
@@ -108,7 +108,7 @@ export default function EditFeed() {
   if (error) {
     return (
       <div className="text-center py-12">
-        <div className="text-red-600">{error}</div>
+        <div className="text-red-600 dark:text-red-400">{error}</div>
         <button
           onClick={() => navigate('/')}
           className="mt-4 text-indigo-600 hover:text-indigo-500"
@@ -123,8 +123,8 @@ export default function EditFeed() {
     <div>
       <div className="mb-8 flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{feed.name}</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{feed.name}</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             {feed.episodes.length} episode{feed.episodes.length !== 1 ? 's' : ''}
           </p>
         </div>
@@ -138,19 +138,19 @@ export default function EditFeed() {
       </div>
 
       {/* RSS URL */}
-      <div className="mb-8 bg-gray-50 rounded-lg p-4">
+      <div className="mb-8 bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               RSS Feed URL
             </label>
-            <code className="block text-sm text-gray-600 truncate">
+            <code className="block text-sm text-gray-600 dark:text-gray-400 truncate">
               {feed.rss_url}
             </code>
           </div>
           <button
             onClick={copyRssUrl}
-            className="flex-shrink-0 px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="flex-shrink-0 px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
           >
             Copy
           </button>
@@ -158,8 +158,8 @@ export default function EditFeed() {
       </div>
 
       {/* Feed Settings */}
-      <div className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Feed Settings</h2>
+      <div className="mb-8 bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Feed Settings</h2>
         <FeedForm
           initialData={feed}
           onSubmit={handleUpdate}
@@ -169,18 +169,18 @@ export default function EditFeed() {
 
       {/* Tracked Playlists */}
       {feed.playlist_sources && feed.playlist_sources.length > 0 && (
-        <div className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="mb-8 bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-medium text-gray-900">
+            <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
               Tracked Playlists
-              <span className="ml-2 text-sm font-normal text-gray-500">
+              <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">
                 ({feed.playlist_sources.length})
               </span>
             </h2>
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+              className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50"
             >
               {refreshing ? 'Refreshing...' : 'Refresh Now'}
             </button>
@@ -194,13 +194,13 @@ export default function EditFeed() {
       )}
 
       {/* Episodes */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-gray-900">Episodes</h2>
+          <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Episodes</h2>
           <div className="flex gap-2">
             <button
               onClick={() => setShowUploadAudio(true)}
-              className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50"
+              className="px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-600"
             >
               Upload Audio
             </button>

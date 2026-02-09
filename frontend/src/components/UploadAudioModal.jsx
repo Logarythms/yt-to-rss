@@ -104,13 +104,13 @@ export default function UploadAudioModal({ feedId, onClose, onUploaded }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-lg w-full p-6">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium text-gray-900">Upload Audio</h3>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Upload Audio</h3>
           <button
             onClick={onClose}
             disabled={loading}
-            className="text-gray-400 hover:text-gray-500 disabled:opacity-50"
+            className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400 disabled:opacity-50"
           >
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -120,14 +120,14 @@ export default function UploadAudioModal({ feedId, onClose, onUploaded }) {
 
         <form onSubmit={handleSubmit}>
           {error && (
-            <div className="mb-4 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
+            <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-md text-sm">
               {error}
             </div>
           )}
 
           {/* Audio File */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Audio File *
             </label>
             <input
@@ -142,24 +142,24 @@ export default function UploadAudioModal({ feedId, onClose, onUploaded }) {
                 type="button"
                 onClick={() => audioInputRef.current?.click()}
                 disabled={loading}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
               >
                 Choose File
               </button>
               {audioFile && (
-                <span className="text-sm text-gray-600 truncate flex-1">
+                <span className="text-sm text-gray-600 dark:text-gray-400 truncate flex-1">
                   {audioFile.name} ({formatBytes(audioFile.size)})
                 </span>
               )}
             </div>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               Supported: {ALLOWED_AUDIO_TYPES.join(', ')} (max {formatBytes(MAX_FILE_SIZE)})
             </p>
           </div>
 
           {/* Title */}
           <div className="mb-4">
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Title
             </label>
             <input
@@ -168,14 +168,14 @@ export default function UploadAudioModal({ feedId, onClose, onUploaded }) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               disabled={loading}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2 border text-sm disabled:opacity-50"
+              className="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2 border text-sm disabled:opacity-50"
               placeholder="Episode title (defaults to filename)"
             />
           </div>
 
           {/* Description */}
           <div className="mb-4">
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Description
             </label>
             <textarea
@@ -184,14 +184,14 @@ export default function UploadAudioModal({ feedId, onClose, onUploaded }) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               disabled={loading}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2 border text-sm disabled:opacity-50"
+              className="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2 border text-sm disabled:opacity-50"
               placeholder="Optional description"
             />
           </div>
 
           {/* Thumbnail */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Thumbnail (optional)
             </label>
             <input
@@ -206,12 +206,12 @@ export default function UploadAudioModal({ feedId, onClose, onUploaded }) {
                 type="button"
                 onClick={() => thumbnailInputRef.current?.click()}
                 disabled={loading}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
               >
                 Choose Image
               </button>
               {thumbnailFile && (
-                <span className="text-sm text-gray-600 truncate flex-1">
+                <span className="text-sm text-gray-600 dark:text-gray-400 truncate flex-1">
                   {thumbnailFile.name}
                 </span>
               )}
@@ -222,10 +222,10 @@ export default function UploadAudioModal({ feedId, onClose, onUploaded }) {
           {loading && (
             <div className="mb-4">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-gray-600">Uploading...</span>
-                <span className="text-sm text-gray-600">{progress}%</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Uploading...</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">{progress}%</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                 <div
                   className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${progress}%` }}
@@ -239,7 +239,7 @@ export default function UploadAudioModal({ feedId, onClose, onUploaded }) {
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-500 disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-500 dark:hover:text-gray-400 disabled:opacity-50"
             >
               Cancel
             </button>

@@ -14,6 +14,7 @@ A self-hosted web application that creates podcast RSS feeds from YouTube videos
 - **Valid podcast RSS** - compatible with all major podcast apps
 - **Background processing** - videos download asynchronously via Celery workers
 - **Storage monitoring** - track disk usage per feed
+- **Dark mode** - three-way theme toggle (System/Light/Dark) persisted across sessions
 - **Secure by design** - admin interface separated from public endpoints, rate limiting, SSRF protection
 
 ## Architecture

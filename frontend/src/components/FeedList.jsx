@@ -13,8 +13,8 @@ export default function FeedList({ feeds }) {
   if (feeds.length === 0) {
     return (
       <div className="text-center py-12">
-        <h3 className="text-lg font-medium text-gray-900">No feeds yet</h3>
-        <p className="mt-2 text-sm text-gray-500">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">No feeds yet</h3>
+        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
           Create your first podcast feed to get started.
         </p>
         <div className="mt-6">
@@ -35,17 +35,17 @@ export default function FeedList({ feeds }) {
         <Link
           key={feed.id}
           to={`/feeds/${feed.id}`}
-          className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+          className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow"
         >
-          <h3 className="text-lg font-medium text-gray-900 truncate">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 truncate">
             {feed.name}
           </h3>
           {feed.description && (
-            <p className="mt-1 text-sm text-gray-500 line-clamp-2">
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
               {feed.description}
             </p>
           )}
-          <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
+          <div className="mt-4 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
             <span>{feed.episode_count} episode{feed.episode_count !== 1 ? 's' : ''}</span>
             <span>
               {formatDate(feed.created_at)}

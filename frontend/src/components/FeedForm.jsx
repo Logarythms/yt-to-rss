@@ -29,13 +29,13 @@ export default function FeedForm({ initialData = {}, onSubmit, submitLabel = 'Sa
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-md text-sm">
           {error}
         </div>
       )}
 
       <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           Name *
         </label>
         <input
@@ -43,13 +43,13 @@ export default function FeedForm({ initialData = {}, onSubmit, submitLabel = 'Sa
           id="name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2 border"
+          className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2 border"
           placeholder="My Podcast Feed"
         />
       </div>
 
       <div>
-        <label htmlFor="author" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="author" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           Author
         </label>
         <input
@@ -57,13 +57,13 @@ export default function FeedForm({ initialData = {}, onSubmit, submitLabel = 'Sa
           id="author"
           value={author}
           onChange={(e) => setAuthor(e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2 border"
+          className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2 border"
           placeholder="John Doe"
         />
       </div>
 
       <div>
-        <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           Description
         </label>
         <textarea
@@ -71,13 +71,13 @@ export default function FeedForm({ initialData = {}, onSubmit, submitLabel = 'Sa
           rows={3}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2 border"
+          className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2 border"
           placeholder="A collection of my favorite videos..."
         />
       </div>
 
       <div>
-        <label htmlFor="artwork" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="artwork" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           Artwork
         </label>
         <input
@@ -85,10 +85,10 @@ export default function FeedForm({ initialData = {}, onSubmit, submitLabel = 'Sa
           id="artwork"
           accept="image/*"
           onChange={(e) => setArtwork(e.target.files[0])}
-          className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+          className="mt-1 block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-50 dark:file:bg-indigo-900/30 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-900/50"
         />
         {initialData.artwork_path && !artwork && (
-          <p className="mt-1 text-sm text-gray-500">Current artwork will be kept unless you upload a new one.</p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Current artwork will be kept unless you upload a new one.</p>
         )}
       </div>
 

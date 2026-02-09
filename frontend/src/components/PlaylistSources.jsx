@@ -83,24 +83,24 @@ export default function PlaylistSources({ feedId, sources, onUpdate }) {
   if (!sources || sources.length === 0) return null;
 
   return (
-    <div className="divide-y divide-gray-200">
+    <div className="divide-y divide-gray-200 dark:divide-gray-700">
       {sources.map((source) => (
         <div key={source.id} className="py-3 flex items-center justify-between">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-gray-900 truncate">
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
               {source.name || source.playlist_id}
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               Last refreshed: {formatDate(source.last_refreshed_at)}
             </p>
           </div>
           <div className="flex items-center gap-2 ml-4">
-            <label className="text-xs text-gray-500">Refresh Interval:</label>
+            <label className="text-xs text-gray-500 dark:text-gray-400">Refresh Interval:</label>
             <select
               value={source.refresh_interval_override || ''}
               onChange={(e) => handleIntervalChange(source, e.target.value)}
               disabled={updatingInterval === source.id}
-              className="text-xs border border-gray-300 rounded px-1.5 py-1 text-gray-700 bg-white disabled:opacity-50"
+              className="text-xs border border-gray-300 dark:border-gray-600 rounded px-1.5 py-1 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 disabled:opacity-50"
             >
               {INTERVAL_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>

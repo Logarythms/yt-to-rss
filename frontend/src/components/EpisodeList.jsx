@@ -161,7 +161,7 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
 
   if (episodes.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
+      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
         No episodes yet. Add some videos to get started.
       </div>
     );
@@ -184,7 +184,7 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
   });
 
   return (
-    <div className="divide-y divide-gray-200">
+    <div className="divide-y divide-gray-200 dark:divide-gray-700">
       {sortedEpisodes.map((episode) => {
         const thumbnailUrl = getThumbnailUrl(episode);
         const isUploaded = episode.source_type === 'upload';
@@ -200,7 +200,7 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
           )}
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
-              <h4 className="text-sm font-medium text-gray-900 truncate">
+              <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                 {episode.title}
               </h4>
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[episode.status]}`}>
@@ -208,11 +208,11 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
               </span>
             </div>
             {episode.description && (
-              <p className="mt-1 text-sm text-gray-500 line-clamp-2">
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
                 {episode.description}
               </p>
             )}
-            <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
+            <div className="mt-2 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
               {episode.duration && (
                 <span>
                   {Math.floor(episode.duration / 60)}:{String(episode.duration % 60).padStart(2, '0')}
@@ -231,7 +231,7 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
                   onBlur={() => handleDateSave(episode)}
                   onKeyDown={(e) => handleDateKeyDown(e, episode)}
                   autoFocus
-                  className="text-xs border border-gray-300 rounded px-1 py-0.5 w-32"
+                  className="text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded px-1 py-0.5 w-32"
                 />
               ) : (
                 <span
@@ -259,7 +259,7 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
               ) : null}
             </div>
             {episode.error_message && (
-              <p className="mt-2 text-sm text-red-600">
+              <p className="mt-2 text-sm text-red-600 dark:text-red-400">
                 Error: {episode.error_message}
               </p>
             )}
@@ -290,9 +290,9 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
 
             {/* Expandable Edit Panel */}
             {expandedEditId === episode.id && (
-              <div ref={editPanelRef} className="mt-4 p-4 bg-gray-50 rounded border">
+              <div ref={editPanelRef} className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded border dark:border-gray-700">
                 <div className="mb-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Title
                   </label>
                   <div className="flex gap-2">
@@ -301,13 +301,13 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
                       value={editTitle}
                       onChange={(e) => setEditTitle(e.target.value)}
                       onKeyDown={(e) => handleEditKeyDown(e, episode)}
-                      className="flex-1 text-sm border border-gray-300 rounded px-2 py-1"
+                      className="flex-1 text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
                       placeholder="Episode title"
                     />
                     <button
                       type="button"
                       onClick={() => setEditTitle('')}
-                      className="text-xs text-gray-500 hover:text-gray-700 px-2"
+                      className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-2"
                       title="Clear to revert to original"
                     >
                       Clear
@@ -320,7 +320,7 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
                   )}
                 </div>
                 <div className="mb-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Description
                   </label>
                   <div className="flex gap-2">
@@ -329,13 +329,13 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
                       onChange={(e) => setEditDescription(e.target.value)}
                       onKeyDown={(e) => handleEditKeyDown(e, episode)}
                       rows={4}
-                      className="flex-1 text-sm border border-gray-300 rounded px-2 py-1"
+                      className="flex-1 text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded px-2 py-1"
                       placeholder="Episode description"
                     />
                     <button
                       type="button"
                       onClick={() => setEditDescription('')}
-                      className="text-xs text-gray-500 hover:text-gray-700 px-2 self-start"
+                      className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-2 self-start"
                       title="Clear to revert to original"
                     >
                       Clear
@@ -357,7 +357,7 @@ export default function EpisodeList({ feedId, episodes, onUpdate }) {
                   </button>
                   <button
                     onClick={() => setExpandedEditId(null)}
-                    className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                    className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
                   >
                     Cancel
                   </button>

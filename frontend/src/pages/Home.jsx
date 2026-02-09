@@ -25,7 +25,7 @@ export default function Home() {
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="text-gray-500">Loading feeds...</div>
+        <div className="text-gray-500 dark:text-gray-400">Loading feeds...</div>
       </div>
     );
   }
@@ -33,7 +33,7 @@ export default function Home() {
   if (error) {
     return (
       <div className="text-center py-12">
-        <div className="text-red-600">{error}</div>
+        <div className="text-red-600 dark:text-red-400">{error}</div>
         <button
           onClick={loadFeeds}
           className="mt-4 text-indigo-600 hover:text-indigo-500"
@@ -47,8 +47,8 @@ export default function Home() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Your Feeds</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Your Feeds</h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Manage your podcast feeds created from YouTube videos.
         </p>
       </div>

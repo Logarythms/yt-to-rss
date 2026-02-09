@@ -1,8 +1,15 @@
+import { useEffect } from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { api } from '../api';
+import { initTheme } from '../theme';
+import ThemeToggle from './ThemeToggle';
 
 export default function Layout() {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    initTheme();
+  }, []);
 
   const handleLogout = () => {
     api.logout();
@@ -10,8 +17,8 @@ export default function Layout() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      <nav className="bg-white dark:bg-gray-900 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
@@ -22,7 +29,7 @@ export default function Layout() {
             <div className="flex items-center gap-4">
               <Link
                 to="/storage"
-                className="text-gray-600 hover:text-gray-900 text-sm font-medium"
+                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 text-sm font-medium"
               >
                 Storage
               </Link>
@@ -32,9 +39,10 @@ export default function Layout() {
               >
                 New Feed
               </Link>
+              <ThemeToggle />
               <button
                 onClick={handleLogout}
-                className="text-gray-500 hover:text-gray-700 text-sm"
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 text-sm"
               >
                 Logout
               </button>

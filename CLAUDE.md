@@ -61,7 +61,9 @@ The nginx config (`frontend/nginx.conf`) defines two server blocks to separate p
 |------|---------|
 | `App.jsx` | React Router setup, auth protection |
 | `api.js` | API client with token management |
-| `components/Layout.jsx` | Navigation, logout |
+| `theme.js` | Dark mode theme module (init, set, get) |
+| `components/ThemeToggle.jsx` | Three-way theme toggle (System/Light/Dark) |
+| `components/Layout.jsx` | Navigation, theme toggle, logout |
 | `components/Login.jsx` | Login form |
 | `components/FeedForm.jsx` | Create/edit feed form |
 | `components/FeedList.jsx` | Feed grid display |
@@ -161,6 +163,13 @@ Edit `services/rss_generator.py`. Uses the `feedgen` library with podcast extens
 - Frontend polls every 5 seconds to update episode status
 - Failed tasks can be retried via API
 - Error messages sanitized (full error logged, generic message shown to user)
+
+### Dark Mode
+- Uses Tailwind's `darkMode: 'class'` strategy — `dark` class on `<html>` toggles all styles
+- Three-way toggle: System (follows OS) / Light / Dark, stored in localStorage `theme` key
+- Inline `<script>` in `index.html` prevents flash of wrong theme on page load
+- `theme.js` manages state: `initTheme()` applies on load + listens to OS changes, `setTheme(mode)` persists
+- All components use `dark:` Tailwind variants (e.g. `bg-white dark:bg-gray-900`)
 
 ### Database Migrations
 - Simple migration system in `database.py`
