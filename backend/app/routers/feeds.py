@@ -19,7 +19,7 @@ from app.config import get_settings
 from app.services.youtube import extract_video_ids_and_playlists, get_video_info, get_playlist_info
 from app.services.audio_converter import (
     validate_audio_file, extract_metadata, convert_to_mp3, is_mp3, verify_audio_file,
-    MAX_FILE_SIZE, LARGE_FILE_THRESHOLD
+    extract_embedded_artwork, MAX_FILE_SIZE, LARGE_FILE_THRESHOLD
 )
 from app.services.thumbnail import process_thumbnail, validate_thumbnail, delete_thumbnail
 from app.services.artwork import validate_artwork_extension, validate_and_process_artwork
@@ -387,6 +387,15 @@ async def upload_audio(
 
             if not process_thumbnail(thumbnail_content, thumbnail_path):
                 thumbnail_path = None  # Failed, but continue without thumbnail
+
+        # Fallback: extract embedded artwork from audio file
+        if not thumbnail_path:
+            artwork_data = extract_embedded_artwork(temp_input_path)
+            if artwork_data:
+                os.makedirs(settings.thumbnail_dir, exist_ok=True)
+                thumbnail_path = os.path.join(settings.thumbnail_dir, f"{episode_id}.jpg")
+                if not process_thumbnail(artwork_data, thumbnail_path):
+                    thumbnail_path = None
 
         # For large files (>100MB), use Celery for background processing
         if file_size > LARGE_FILE_THRESHOLD:

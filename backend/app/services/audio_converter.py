@@ -188,6 +188,42 @@ def convert_to_mp3(input_path: str, output_path: str, bitrate: str = '192k') -> 
         return False
 
 
+def extract_embedded_artwork(file_path: str) -> Optional[bytes]:
+    """
+    Extract embedded artwork (album art) from an audio file using ffmpeg.
+    Returns the image bytes if found, None otherwise.
+    """
+    try:
+        result = subprocess.run(
+            [
+                'ffmpeg',
+                '-i', file_path,
+                '-an',          # No audio
+                '-vcodec', 'copy',
+                '-f', 'image2pipe',
+                '-'
+            ],
+            capture_output=True,
+            timeout=30
+        )
+
+        if result.returncode == 0 and result.stdout:
+            logger.info(f"Extracted embedded artwork from {file_path} ({len(result.stdout)} bytes)")
+            return result.stdout
+
+        return None
+
+    except subprocess.TimeoutExpired:
+        logger.warning(f"ffmpeg timeout extracting artwork from {file_path}")
+        return None
+    except FileNotFoundError:
+        logger.error("ffmpeg not found - ensure ffmpeg is installed")
+        return None
+    except Exception as e:
+        logger.error(f"Failed to extract embedded artwork: {e}")
+        return None
+
+
 def is_mp3(filename: str) -> bool:
     """Check if file is already MP3 format."""
     return filename.lower().endswith('.mp3')
