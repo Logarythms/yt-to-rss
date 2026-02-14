@@ -124,7 +124,51 @@ def run_migrations():
             logger.info(f"Data migration '{migration_name}' completed")
 
 
+def run_schema_migrations():
+    """Run schema-altering migrations that require table recreation (SQLite)."""
+    with engine.connect() as conn:
+        # Migration: make youtube_id nullable for uploaded audio support
+        migration_name = "make_youtube_id_nullable"
+        result = conn.execute(
+            text("SELECT 1 FROM _migrations WHERE name = :name"),
+            {"name": migration_name}
+        )
+        if not result.fetchone():
+            # Check if youtube_id column has NOT NULL constraint
+            result = conn.execute(text("PRAGMA table_info(episodes)"))
+            columns = result.fetchall()
+            youtube_id_info = next((col for col in columns if col[1] == 'youtube_id'), None)
+
+            if youtube_id_info and youtube_id_info[3] == 1:  # notnull flag = 1
+                logger.info("Migrating episodes table: making youtube_id nullable")
+                col_names = [col[1] for col in columns]
+                col_list = ', '.join(col_names)
+
+                conn.execute(text("PRAGMA foreign_keys=OFF"))
+                conn.execute(text("CREATE TABLE _episodes_backup AS SELECT * FROM episodes"))
+                conn.execute(text("DROP TABLE episodes"))
+                conn.commit()
+
+                # Recreate from model definition (youtube_id is nullable)
+                Base.metadata.tables['episodes'].create(bind=engine)
+
+                conn.execute(text(
+                    f"INSERT INTO episodes ({col_list}) SELECT {col_list} FROM _episodes_backup"
+                ))
+                conn.execute(text("DROP TABLE _episodes_backup"))
+                conn.execute(text("PRAGMA foreign_keys=ON"))
+                conn.commit()
+                logger.info("Successfully made youtube_id nullable")
+
+            conn.execute(
+                text("INSERT INTO _migrations (name) VALUES (:name)"),
+                {"name": migration_name}
+            )
+            conn.commit()
+
+
 def init_db():
     """Create all tables and run migrations."""
     Base.metadata.create_all(bind=engine)
     run_migrations()
+    run_schema_migrations()
