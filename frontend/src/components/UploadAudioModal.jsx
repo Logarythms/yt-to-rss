@@ -51,11 +51,6 @@ export default function UploadAudioModal({ feedId, onClose, onUploaded }) {
 
     setAudioFile(file);
     setError('');
-
-    // Default title to filename without extension
-    if (!title) {
-      setTitle(file.name.replace(/\.[^/.]+$/, ''));
-    }
   };
 
   const handleThumbnailChange = (e) => {
@@ -169,7 +164,7 @@ export default function UploadAudioModal({ feedId, onClose, onUploaded }) {
               onChange={(e) => setTitle(e.target.value)}
               disabled={loading}
               className="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 px-3 py-2 border text-sm disabled:opacity-50"
-              placeholder="Episode title (defaults to filename)"
+              placeholder="Episode title (defaults to ID3 tag or filename)"
             />
           </div>
 
