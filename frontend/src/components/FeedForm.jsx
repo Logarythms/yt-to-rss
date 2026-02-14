@@ -88,7 +88,14 @@ export default function FeedForm({ initialData = {}, onSubmit, submitLabel = 'Sa
           className="mt-1 block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-50 dark:file:bg-indigo-900/30 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-900/50"
         />
         {initialData.artwork_path && !artwork && (
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Current artwork will be kept unless you upload a new one.</p>
+          <div className="mt-2">
+            <img
+              src={`/artwork/${initialData.id}`}
+              alt="Current artwork"
+              className="w-24 h-24 rounded-md object-cover"
+            />
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Current artwork will be kept unless you upload a new one.</p>
+          </div>
         )}
       </div>
 
