@@ -13,6 +13,7 @@ RUN pip install --no-cache-dir .
 
 # Copy application code
 COPY app/ ./app/
+COPY migrate_dir2cast.py .
 
 # Create data directories
 RUN mkdir -p /app/data/audio /app/data/artwork
